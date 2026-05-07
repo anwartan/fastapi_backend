@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from sqlmodel import create_engine, Session, SQLModel, text
-from typing import Annotated
 from fastapi import Depends
 
 load_dotenv()

@@ -1,10 +1,7 @@
 import string
 
-from annotated_types import T
 from fastapi import APIRouter, Query
-from httpcore import stream
 from sqlalchemy import Integer, func, literal
-from websockets import route
 
 from app.database import SessionDB1
 from app.model.farm import telurpro
