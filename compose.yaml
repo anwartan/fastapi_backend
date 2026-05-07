@@ -1,0 +1,29 @@
+version: "3.9"
+
+
+services:
+
+  # --- PROJECT 1: FastAPI (Python) ---
+
+  # Akses: http://IP-Server:8005
+
+  backend_kafe_ternak:
+
+    image: docker.io/library/python:3.10-slim
+    build: .
+    container_name: backend_kafe_ternak
+
+    restart: unless-stopped
+
+    ports:
+
+      - "8005:8000"
+
+    working_dir: /app
+
+    volumes:
+
+      - .:/app:Z
+
+    # Perintah untuk install library dan jalankan server secara otomatis
+    command: python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
