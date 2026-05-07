@@ -12,7 +12,7 @@ mysql_port = os.getenv("DATABASE_PORT")
 mysql_database_name = os.getenv("DATABASE_NAME")
 mysql_url = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name}"
 
-engine_db = create_engine(mysql_url , echo=True)
+engine_db = create_engine(mysql_url , echo=True, pool_pre_ping=True, pool_recycle=3600)
 
 def get_session():
     with Session(engine_db) as session:

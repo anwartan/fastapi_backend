@@ -2,7 +2,7 @@ import select
 
 from fastapi import APIRouter
 from app.database import SessionDB1
-from app.model.ayam import Ayam
+from app.model.farm.ayam import Ayam
 from sqlmodel import select
 
 router = APIRouter()
