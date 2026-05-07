@@ -2,7 +2,6 @@ import select
 from unittest import result
 
 from fastapi import APIRouter, Query
-from httpx import request
 from app.database import SessionDB1
 from app.model.farm import ayammini
 from app.model.farm.ayamklr import Ayamklr
