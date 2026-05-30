@@ -1,8 +1,6 @@
 from datetime import datetime
-from tkinter.font import Font
 
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, Integer
 
 class PerubahanDataAyam(SQLModel, table=True):
     __tablename__ = "perubahandataayam"
