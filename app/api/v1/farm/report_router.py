@@ -43,7 +43,7 @@ def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     if(filter == "ID"):
         statement = statement.order_by(ayam_sub_query.c.ID.asc())
     else:
-        statement = statement.order_by(TempJmlhAyam_sub_query.c.Indexing.desc())
+        statement = statement.order_by(TempJmlhAyam_sub_query.c.Indexing.asc())
 
     results = session.exec(statement).all()
     mix = ayammini_results + results
