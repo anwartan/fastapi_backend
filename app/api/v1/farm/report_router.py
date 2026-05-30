@@ -33,9 +33,11 @@ def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
         start_of_month = selected_date.replace(month=selected_date.month - 1, day=1)
 
     sub_jlh_klr = select(Ayamklr.ID, func.sum(Ayamklr.mati +Ayamklr.sakit +Ayamklr.jual).label("jlh_klr")).join(Ayam, Ayam.ID == Ayamklr.ID).where(Ayamklr.Tgl >= start_of_month, Ayamklr.Tgl < date).group_by(Ayamklr.ID).subquery()
-    sub_ayam_sekarang = select(sub_perubahan_data_ayam.c.ID, sub_perubahan_data_ayam.c.JmlhSkrg, func.coalesce(sub_jlh_klr.c.jlh_klr, 0).label("jlh_klr") ).join(sub_jlh_klr, sub_jlh_klr.c.ID == sub_perubahan_data_ayam.c.ID, isouter=True).where(sub_perubahan_data_ayam.c.Tgl <= date).where(sub_perubahan_data_ayam.c.rn == 1).subquery()
+    sub_ayam_sekarang = select(sub_perubahan_data_ayam.c.ID, sub_perubahan_data_ayam.c.JmlhSkrg, func.coalesce(sub_jlh_klr.c.jlh_klr, 0).label("jlh_klr"), 
+                               (sub_perubahan_data_ayam.c.JmlhSkrg - func.coalesce(sub_jlh_klr.c.jlh_klr, 0)).label("JmlhSkrgIncKlr")
+                                ).join(sub_jlh_klr, sub_jlh_klr.c.ID == sub_perubahan_data_ayam.c.ID, isouter=True).where(sub_perubahan_data_ayam.c.Tgl <= date).where(sub_perubahan_data_ayam.c.rn == 1).subquery()
     print("sub_ayam_sekarang", sub_ayam_sekarang)
-    statement = select(ayam_sub_query.c.TglMsk,TempJmlhAyam_sub_query.c.Kandang, sub_ayam_sekarang.c.JmlhSkrg ,telurpro_sub_query.c.Jmlh, telurpro_sub_query.c.Persen, ayam_sub_query.c.Jenisayam, TempJmlhAyam_sub_query.c.Indexing, ayam_sub_query.c.ID
+    statement = select(ayam_sub_query.c.TglMsk,TempJmlhAyam_sub_query.c.Kandang, sub_ayam_sekarang.c.JmlhSkrgIncKlr ,telurpro_sub_query.c.Jmlh, telurpro_sub_query.c.Persen, ayam_sub_query.c.Jenisayam, TempJmlhAyam_sub_query.c.Indexing, ayam_sub_query.c.ID
     ).join(TempJmlhAyam_sub_query, TempJmlhAyam_sub_query.c.Kandang == ayam_sub_query.c.Kandang
     ).join(telurpro_sub_query, telurpro_sub_query.c.ID == ayam_sub_query.c.ID
     ).join(sub_ayam_sekarang, sub_ayam_sekarang.c.ID == ayam_sub_query.c.ID)
