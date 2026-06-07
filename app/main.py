@@ -50,6 +50,7 @@ app.include_router(order_router, prefix=base_kafe_url+"/orderstock", tags=["Orde
 app.include_router(bborder_router, prefix=base_kafe_url+"/bborder", tags=["BBOrder"]) 
 
 base_farm_url = base_url + "/farm"
+
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
 app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=["Ayamklr"])
 app.include_router(report_router.router, prefix=base_farm_url+"/report", tags=["Report"])

@@ -10,7 +10,33 @@ from app.model.farm.mskanakayam import Mskanakayam
 from app.model.farm.telurpro import Telurpro 
 from app.model.farm.perubahandataayam import PerubahanDataAyam
 from sqlmodel import select, func, desc
+
+from app.model.farm.telursisa import Telursisa
+from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
+
+@router.get("/sisa-telur/{date}")
+def telursisalayer(session: SessionDB1, date:str):
+    layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
+
+    data__layer = session.exec(layer_statement).first()
+    arab_statement = select(Telursisaarab.JmlhLap, Telursisaarab.JmlhMlm).where(Telursisaarab.Tgl == date)
+    data__arab = session.exec(arab_statement).first()
+    return {
+        "data": [
+            {
+                "tipe":"Layer",
+                "lap": data__layer.JmlhLap,
+                "mlm": data__layer.JmlhMlm,
+            },
+            {
+                "tipe":"arab",
+                "lap": data__arab.JmlhLap,
+                "mlm": data__arab.JmlhMlm,
+            }
+        ]
+    }
+
 @router.get("/{date}")
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     print("date", date)
