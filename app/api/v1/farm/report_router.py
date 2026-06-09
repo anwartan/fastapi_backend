@@ -7,6 +7,7 @@ from app.model.farm.ayam import Ayam
 from app.model.farm.ayamklr import Ayamklr
 from app.model.farm.ayammini import Ayammini
 from app.model.farm.mskanakayam import Mskanakayam
+from app.model.farm.telurklr import Telurklr
 from app.model.farm.telurpro import Telurpro 
 from app.model.farm.perubahandataayam import PerubahanDataAyam
 from sqlmodel import select, func, desc
@@ -15,10 +16,34 @@ from app.model.farm.telursisa import Telursisa
 from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
 
+@router.get("/telur-klr/{date}")
+def telurklrlayer(session: SessionDB1, date:str):
+    telurklr_layer = select(Telurklr.Nama, Telurklr.Jmlh, func.coalesce(Telurklr.Butir, 0).label("Butir"), Telurklr.JenisTelur).where(Telurklr.Tgl == date)
+    data__telurklr = session.exec(telurklr_layer).first()
+    telurklr_arab = select(Telurklr.Nama, Telurklr.Jmlh, func.coalesce(Telurklr.Butir, 0).label("Butir"), Telurklr.JenisTelur).where(Telurklr.Tgl == date)
+    data__telurklr_arab = session.exec(telurklr_arab).first()
+
+    return {
+        "data":[
+            {
+
+                "Nama": data__telurklr.Nama,
+                "Jmlh": data__telurklr.Jmlh,
+                "Butir": data__telurklr.Butir,
+                "JenisTelur": data__telurklr.JenisTelur,
+            },
+            {
+
+                "Nama": data__telurklr_arab.Nama,
+                "Jmlh": data__telurklr_arab.Jmlh,
+                "Butir": data__telurklr_arab.Butir,
+                "JenisTelur": data__telurklr_arab.JenisTelur,
+            }
+        ]
+    }
 @router.get("/sisa-telur/{date}")
 def telursisalayer(session: SessionDB1, date:str):
     layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
-
     data__layer = session.exec(layer_statement).first()
     arab_statement = select(Telursisaarab.JmlhLap, Telursisaarab.JmlhMlm).where(Telursisaarab.Tgl == date)
     data__arab = session.exec(arab_statement).first()
