@@ -17,28 +17,26 @@ from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
 
 @router.get("/telur-klr/{date}")
-def telurklrlayer(session: SessionDB1, date:str):
-    telurklr_layer = select(Telurklr.Nama, Telurklr.Jmlh, func.coalesce(Telurklr.Butir, 0).label("Butir"), Telurklr.JenisTelur).where(Telurklr.Tgl == date)
-    data__telurklr = session.exec(telurklr_layer).first()
-    telurklr_arab = select(Telurklr.Nama, Telurklr.Jmlh, func.coalesce(Telurklr.Butir, 0).label("Butir"), Telurklr.JenisTelur).where(Telurklr.Tgl == date)
-    data__telurklr_arab = session.exec(telurklr_arab).first()
+def telurklrlayer(session: SessionDB1, date: str):
+    statement = select(
+        Telurklr.Nama,
+        Telurklr.Jmlh,
+        Telurklr.JenisTelur
+    ).where(
+        Telurklr.Tgl == date
+    ).order_by( Telurklr.Nama,
+    Telurklr.JenisTelur)
+
+    data = session.exec(statement).all()
 
     return {
-        "data":[
+        "data": [
             {
-
-                "Nama": data__telurklr.Nama,
-                "Jmlh": data__telurklr.Jmlh,
-                "Butir": data__telurklr.Butir,
-                "JenisTelur": data__telurklr.JenisTelur,
-            },
-            {
-
-                "Nama": data__telurklr_arab.Nama,
-                "Jmlh": data__telurklr_arab.Jmlh,
-                "Butir": data__telurklr_arab.Butir,
-                "JenisTelur": data__telurklr_arab.JenisTelur,
+                "Nama": item.Nama,
+                "Jmlh": item.Jmlh,
+                "JenisTelur": item.JenisTelur,
             }
+            for item in data
         ]
     }
 @router.get("/sisa-telur/{date}")
