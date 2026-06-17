@@ -5,7 +5,7 @@ from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, Integer
 
 class TempPickUpTelur(SQLModel, table=True):
-    __tablename__ = "TempPickTelur"
+    __tablename__ = "TempPickUpTelur"
     id: int = Field(primary_key=True, default=None)
     Tgl : str 
     Dist : int 

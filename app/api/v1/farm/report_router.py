@@ -10,12 +10,32 @@ from app.model.farm.mskanakayam import Mskanakayam
 from app.model.farm.telurklr import Telurklr
 from app.model.farm.telurpro import Telurpro 
 from app.model.farm.perubahandataayam import PerubahanDataAyam
+from app.model.farm.TempPickTelur import TempPickTelur
 from sqlmodel import select, func, desc
 
 from app.model.farm.telursisa import Telursisa
 from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
+@router.get("/langsirtelur/{date}")
+def langsirtelur(session: SessionDB1, date = str):
+    statement = select(TempPickTelur.Dist, TempPickTelur.Kandang, TempPickTelur.Ikat, TempPickTelur.Ppn, TempPickTelur.Butir, TempPickTelur.Tipe, TempPickTelur.Jenisayam, TempPickTelur.Input).where(TempPickTelur.Tgl == date)
+    results = session.exec(statement).all()
+    return {
+        "data": [
+            {
+                "Dist": item.Dist,
+                "kandang": item.Kandang,
+                "Ikat": item.Ikat,
+                "Ppn": item.Ppn,
+                "Butir": item.Butir,
+                "Tipe": item.Tipe,
+                "Jenisayam": item.Jenisayam,
+                "Input": item.Input,
 
+            }
+            for item in results
+        ]
+    }
 @router.get("/telur-klr/{date}")
 def telurklrlayer(session: SessionDB1, date: str):
     statement = select(
@@ -101,4 +121,3 @@ def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     print("hasil", mix)
 
     return {"data": [{"Tgl": mix[0], "Kandang": mix[1], "Jmlh": mix[2], "JmlhPro": mix[3], "persen":mix[4], "jenis":mix[5], "ID":mix[7]} for mix in mix]}
-
