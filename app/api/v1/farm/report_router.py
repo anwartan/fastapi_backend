@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from sqlalchemy import Integer, func, literal, desc
 from datetime import datetime
 from app.database import SessionDB1
-from app.model.farm import TempLangsirMkn
+from app.model.farm.TempLangsirMkn import TempLangsirMkn
 from app.model.farm.TempJmlhAyam import TempJmlhAyam
 from app.model.farm.ayam import Ayam
 from app.model.farm.ayamklr import Ayamklr
@@ -19,7 +19,11 @@ from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
 @router.get("/langsirmkn/{date}")
 def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str = None):
-    statement = select(TempLangsirMkn.Dist, TempLangsirMkn.Kandang, TempLangsirMkn.JenisMkn, TempLangsirMkn.Goni, TempLangsirMkn.Kg, TempLangsirMkn.Input).where(TempLangsirMkn.Tgl == date, TempLangsirMkn.Dist == Dist, TempLangsirMkn.kandang == kandang)
+    statement = select(TempLangsirMkn.Dist, TempLangsirMkn.Kandang, TempLangsirMkn.JenisMkn, TempLangsirMkn.Goni, TempLangsirMkn.Kg, TempLangsirMkn.Input).where(TempLangsirMkn.Tgl == date)
+    if dist is not None :
+        statement = statement.where(TempLangsirMkn.Dist == dist)
+    if kandang is not None :
+        statement = statement.where(TempLangsirMkn.Kandang == kandang)
     results = session.exec(statement).all()
     return{
         "data":[
