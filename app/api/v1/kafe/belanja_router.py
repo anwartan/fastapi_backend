@@ -31,8 +31,7 @@ def get_by_ids(session: SessionDBKafe, id: int,):
 
 @router.get("/")
 def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
-    if current_user.get("Tingkat") != "Basic":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     query = select(Belanja).limit(limit).offset(offset)
     results = session.exec(query).all()
     query_total = select(func.count(Belanja.ID))
