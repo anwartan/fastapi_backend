@@ -71,3 +71,4 @@ htmlcov/
 dmypy.json
 /uploads
 serviceAccountKey.json
+*.json
