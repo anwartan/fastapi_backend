@@ -60,6 +60,7 @@ app.include_router(auth_router, prefix=base_kafe_url+"/auth", tags=["Auth"])
 app.include_router(image_router,prefix=base_kafe_url+"/image",tags=["image"])
 
 base_farm_url = base_url + "/farm"
+
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
 app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=["Ayamklr"])
 app.include_router(report_router.router, prefix=base_farm_url+"/report", tags=["Report"])
