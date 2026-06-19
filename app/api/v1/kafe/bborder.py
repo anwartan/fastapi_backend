@@ -1,8 +1,6 @@
 import select
-from unittest import result
 
-from fastapi import APIRouter, Depends, FastAPI,HTTPException
-import app
+from fastapi import APIRouter, Depends, HTTPException
 from app.auth import get_current_user
 from app.database import SessionDBKafe, get_session
 from sqlmodel import Session, select,func

@@ -1,20 +1,16 @@
 
-from datetime import timedelta
 from sqlmodel import select
 
 from fastapi import APIRouter, Depends,HTTPException 
 
-from typing import Annotated
-from app.request import forget_password_request
 from app.services.AuthService import AuthServiceInstance
 from app.services.email_service import send_otp_email
 from app.services.otp_service import generate_otp, save_otp, verify_otp
-from app.auth import create_access_token, get_current_user, get_password_hash, verify_password
+from app.auth import create_access_token, get_current_user, get_password_hash
 from app.model.kafe.member import member
-from app.database import SessionDBKafe, SessionDBKafeLogin,get_session_kafe_login
+from app.database import SessionDBKafe, SessionDBKafeLogin
 from app.request.LoginRequest import LoginRequest
 from app.request.ceateuserrequest import CreateuserRequest
-import asyncio
 from app.request.change_password_request import ChangePasswordRequest
 from app.request.forget_password_request import ForgotPasswordRequest
 from app.request.verify_otp_request import VerifyOtpRequest
