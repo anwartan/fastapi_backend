@@ -1,26 +1,42 @@
 import select
 
-from fastapi import APIRouter, HTTPException
-from app.database import SessionDB1, get_session
+from fastapi import APIRouter, HTTPException, BackgroundTasks,FastAPI,File,UploadFile, Form, Depends
+from requests import session
+from app.auth import get_current_user
+from app.database import SessionDBKafe, get_session
 from sqlmodel import select,func
 from app.model.kafe.belanja import Belanja
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
-from app.request import belanja_item_request
+from app.request import belanja_item_request, resetbelanjadetail
+from app.request import belanjaan_detail_item_request
+from app.request.belanjaan_detail_item_request import BelanjaanDetailItemRequest
 from app.request.create_order_request import CreateOrderRequest
 from datetime import datetime 
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
-
+from app.request.penerimaan_belanja_request import InputPenerimaanBelanjaRequest
+from app.services.firebase_service import FirebaseService
+from app.api.v1.kafe.listener.order_stock_created_listener import listener as order_stock_created_listener
+from typing import List, Annotated
+from app.services.cafe_file_service import CafeFileService
+from app.services.media_service import MediaService
 router = APIRouter()
-def get_latest_id(session: SessionDB1):
+def get_latest_id(session: SessionDBKafe):
     query = select(func.max(Bborder.IDOrder))
     latest_id= session.exec(query).first()
     return latest_id if latest_id is not None else 0
-
+def get_by_ids(session: SessionDBKafe, id: int,):
+    query = select(Belanja).where(Belanja.ID == id)
+    result = session.exec(query).all()
+    if not result:
+        raise HTTPException(status_code=404, detail="Belanja not found")
+    return result
 
 @router.get("/")
-def get(session: SessionDB1, limit: int = 10, offset: int = 0):
+def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
+    if current_user.get("Tingkat") != "Basic":
+        raise HTTPException(status_code=401, detail="Unauthorized")
     query = select(Belanja).limit(limit).offset(offset)
     results = session.exec(query).all()
     query_total = select(func.count(Belanja.ID))
@@ -32,7 +48,7 @@ def get(session: SessionDB1, limit: int = 10, offset: int = 0):
                 "total": total
             }}
 @router.get("/{id}")
-def get_by_id(id:int,session: SessionDB1):
+def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     
     query = select(Belanja).where(Belanja.ID == id)
 
@@ -44,7 +60,7 @@ def get_by_id(id:int,session: SessionDB1):
         return {"data": result}
     
 @router.delete("/{id}/{jenis}")
-def delete(id: int,jenis: str, session: SessionDB1):
+def delete(id: int,jenis: str, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     print("id",id)
     print("jenis",jenis)
     query = select(Belanja).where(Belanja.ID == id, Belanja.Jenis == jenis)
@@ -57,7 +73,7 @@ def delete(id: int,jenis: str, session: SessionDB1):
     return {"message": "belanja deleted successfully"}
 
 @router.post("/create")
-def create(session: SessionDB1, order:CreateOrderRequest):
+def create(session: SessionDBKafe, order:CreateOrderRequest, bgTask: BackgroundTasks,current_user: dict = Depends(get_current_user)):
 
     new_id = get_latest_id(session) + 1
     date=datetime.strptime(order.tgl, "%Y-%m-%d")
@@ -75,7 +91,7 @@ def create(session: SessionDB1, order:CreateOrderRequest):
 
     )
     session.add(new_order)
-    # jenis_stock_collected = [item.jenis_stock for item in order.items]
+    
     for item in order.items:
         jenis_db = session.exec(
             select(Jnsstock).where(Jnsstock.Jenis == item.jenis_stock)
@@ -86,20 +102,31 @@ def create(session: SessionDB1, order:CreateOrderRequest):
                 status_code=400,
                 detail=f"Jenis stock '{item.jenis_stock}' tidak ditemukan"
             )
-        order_stock = Belanja(
+        order_belanja = Belanja(
             ID=new_id,
             Jenis=item.jenis_stock,
-            Jmlh=item.qty,
+            JmlhOrder=item.qty,
+            JmlhPenerima=0,
+            ID_Penerima=0,
+            Jmlh=0,
+            ID_Belanja=0,
             Price=0,
             Unit=jenis_db.Unit,
             Divisi="",
             Checked=False,
-            ket=item.keterangan_jenis_stock
+            ket=""
         )
     
-        session.add(order_stock)
+        session.add(order_belanja)
     session.commit()
     session.refresh(new_order)
+    # token1  = "cW0fJxjrSyWCh0GfyR7bSS:APA91bFee7OaT9QHGJFDNOGh5elQ1N5yjt66krKTgUEWmvHGJ0ECp913gHidoSRpbs1Feu2ej4_sYM4aViYf5pUCPND3E5XMxN_i4wS_WR49M7uNA6AILiI";
+    token2="cjVg-hwsR2qwrwTR5S0bc4:APA91bHPByN9Qiae-zOiK1zFcvBh7ImVbm1Yf1DAcD1LNpa23zwhYArL0HYukX6-YA8uuyqazl5wUsslxDNbtk8FYRvRx6jBk-nKQz8mkC1fFwY4vTzpfjQ";
+    # token3="cPuLbXpaT8OXj6BTU79y70:APA91bGZKSCm-kEGzZXZ4ddDTUgEZR-gsSHEbYDImi2Ot838evPwWElRTNGRdBGShP_7Ea2_Z3T_q5rytK1OchtINDfcTtMgtcyZIT0hGScTKuEMrhcYSdY";
+    # FirebaseService.send_notification(token1, "New Order Created", "A new order has been created.") ## delay
+    FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
+    # # bgTask.add_task(order_stock_created_listener)
+    print("Order created, background task added")
     return{
         "data":new_order 
     }
@@ -108,7 +135,7 @@ def create(session: SessionDB1, order:CreateOrderRequest):
 
 @router.put("/")
 def update_belanja(
-     request: belanja_item_request.BelanjaItemRequest, session: SessionDB1
+     request: belanja_item_request.BelanjaItemRequest, session: SessionDBKafe,current_user: dict = Depends(get_current_user)
 ):
 
     # cari data
@@ -137,4 +164,150 @@ def update_belanja(
         "message": "Berhasil update",
         "data": data
     }
+
+@router.get("/{id}/jenis")
+def get_by_jenis(id: int,  session: SessionDBKafe):
+    query = select(Belanja).where(Belanja.ID == id).where(Belanja.JmlhPenerima == 0)
+    results = session.exec(query).all()
+    result_mapped = []
+    for result in results:
+        result_mapped.append(result.Jenis)
+    query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
+    result_jenis = session.exec(query_jenis).all()
+    return {"data": result_jenis}
+
+
+def get_media_service(session: SessionDBKafe) -> MediaService:
+    return MediaService(session=session)
+
+@router.put("/penerimaan/")
+async def penerimaan_belanja(
+    session: SessionDBKafe,
+    penerimaan: InputPenerimaanBelanjaRequest = Depends(
+        InputPenerimaanBelanjaRequest.as_form
+    ),
+    files: list[UploadFile] = File(...),
+    mediaService: MediaService = Depends(get_media_service) 
+):
+   
+    input_belanja = (
+        session.query(Belanja)
+        .filter(
+            Belanja.ID == penerimaan.id,
+            Belanja.Jenis == penerimaan.Jenis
+        )
+        .first()
+    )
+
+    # jika data tidak ditemukan
+    if input_belanja is None:
+        return {
+            "message": "Data tidak ditemukan"
+        }
+
+    # update data
+    input_belanja.JmlhPenerima = penerimaan.JmlhPenerima
+
+    # optional
+    # input_belanja.Checked = True
+    
+    
+    uploaded_files = await CafeFileService.massUpload(files)
+
+
+    # simpan perubahan
+    session.commit()
+    session.refresh(input_belanja)
+    print(f"Input Belanja ID after commit: {input_belanja.ID_Belanja}")
+
+    mediaService.createMany(uploaded_files,Belanja.subject_type(), input_belanja.ID_Belanja)
+
+    return {
+        "message": "Data berhasil diupdate",
+        "data": 
+            input_belanja
+        
+        }
+@router.put("/belanjaandetail/")
+def belanjaandetail(
+     request: belanjaan_detail_item_request.BelanjaanDetailItemRequest, session: SessionDBKafe,current_user: dict = Depends(get_current_user)
+):
+
+    # cari data
+    data = session.exec(
+        select(Belanja).where(Belanja.ID == request.id, Belanja.Jenis == request.jenis)
+    ).first()
+    print(data)
+
+    # cek ada atau tidak
+    if data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan"
+        )
+
+    # update field
+    data.Price = request.harga
+    data.Jmlh = request.qty
+    data.ket = request.ket
+
+    # simpan
+    session.add(data)
+    session.commit()
+    session.refresh(data)
+
+    return {
+        "message": "Berhasil update",
+        "data": data
+    }
+@router.put("/resetbelanjaandetail")
+def reset_belanjaandetail(
+    request: resetbelanjadetail.ResetBelanjaDetailRequest, session: SessionDBKafe,current_user: dict = Depends(get_current_user)
+):
+
+    # cari data
+    data = session.exec(
+        select(Belanja).where(Belanja.ID == request.id, Belanja.Jenis == request.jenis)
+    ).first()
+    print(data)
+
+    # cek ada atau tidak
+    if data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan"
+        )
+
+    # update field
+    data.Price = 0
+    data.Jmlh = 0
+    data.ket = ""
+
+    # simpan
+    session.add(data)
+    session.commit()
+    session.refresh(data)
+
+    return {
+        "message": "Berhasil reset",
+        "data": data
+    }
+@router.get("/belanjaandetail/{id}")
+def get_belanjaandetail_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Belanja).where(Belanja.ID == id, Belanja.Jmlh != 0, Belanja.Price != 0)
+    result = session.exec(query).all()
+    if not result:
+        return JSONResponse(content={"message": "belanja not found"}, status_code=404)
+    else:
+        return {"data": result}
+@router.get("/{id}/jenis/byjumlah")
+def get_by_jenis_jumlah(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Belanja).where(Belanja.ID == id).where(Belanja.Jmlh == 0)
+    results = session.exec(query).all()
+    result_mapped = []
+    for result in results:
+        result_mapped.append(result.Jenis)
+    query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
+    result_jenis = session.exec(query_jenis).all()
+    return {"data": result_jenis}
 

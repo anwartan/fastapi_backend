@@ -11,31 +11,40 @@ mysql_host = os.getenv("DATABASE_HOST")
 mysql_port = os.getenv("DATABASE_PORT")
 mysql_database_name = os.getenv("DATABASE_NAME")
 mysql_database_name_kafe = os.getenv("DATABASE_NAME_KAFE")
+mysql_database_name_kafe_login = os.getenv("DATABASE_NAME_KAFE_LOGIN")
 mysql_url = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name}"
 mysql_url_kafe = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name_kafe}"
-
+mysql_url_kafe_login = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name_kafe_login}"
 engine_db = create_engine(mysql_url , echo=True, pool_pre_ping=True, pool_recycle=3600)
 engine_db_kafe = create_engine(mysql_url_kafe, echo=True, pool_pre_ping=True, pool_recycle=3600)
-
+engine_db_kafe_login = create_engine(mysql_url_kafe_login, echo=True, pool_pre_ping=True, pool_recycle=3600)
 def get_session():
     with Session(engine_db) as session:
         yield session
 
 
 def get_session_kafe():
-    with Session(engine_db) as session:
+    with Session(engine_db_kafe) as session:
         yield session
-
+def get_session_kafe_login():
+    with Session(engine_db_kafe_login) as session:
+        yield session
 
 
 def test_database_connection():
     try:
         with Session(engine_db) as session:
             session.exec(text("SELECT 1"))
+        with Session(engine_db_kafe) as session:
+            session.exec(text("SELECT 1"))
+        with Session(engine_db_kafe_login) as session:
+            session.exec(text("SELECT 1"))
         print("Database connection successful!")
+        
     except Exception as e:
         print(f"Database connection failed: {e}")
 
 
 SessionDB1 = Annotated[Session, Depends(get_session)]
 SessionDBKafe = Annotated[Session, Depends(get_session_kafe)]
+SessionDBKafeLogin = Annotated[Session, Depends(get_session_kafe_login)]

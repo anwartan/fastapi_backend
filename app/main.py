@@ -4,10 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, report_router
 from app.database import test_database_connection
 import logging
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.kafe.jenisstock_router import router as jenisstock_router
 from app.api.v1.kafe.belanja_router import router as belanja_router
 from app.api.v1.kafe.orderstock_router import router as order_router
 from app.api.v1.kafe.bborder import router as bborder_router
+from app.api.v1.kafe.image_router import router as image_router
+from app.api.v1.kafe.auth_router import router as auth_router
+from app.api.v1.kafe.mail_router import router as mail_router
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -18,6 +25,7 @@ logging.basicConfig(
 )
 app = FastAPI()
 base_url = "/api/v1"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -48,6 +56,8 @@ app.include_router(jenisstock_router, prefix=base_kafe_url+"/jenisstock", tags=[
 app.include_router(belanja_router, prefix=base_kafe_url+"/belanja", tags=["Belanja"])
 app.include_router(order_router, prefix=base_kafe_url+"/orderstock", tags=["Orderstock"])
 app.include_router(bborder_router, prefix=base_kafe_url+"/bborder", tags=["BBOrder"]) 
+app.include_router(auth_router, prefix=base_kafe_url+"/auth", tags=["Auth"])
+app.include_router(image_router,prefix=base_kafe_url+"/image",tags=["image"])
 
 base_farm_url = base_url + "/farm"
 
