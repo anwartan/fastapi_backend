@@ -15,3 +15,5 @@ class InpAyammini(SQLModel, table=True):
     JmlhJual: int | None = Field(default=None)
     Makanan2: str |None = Field(default=None)
     Jmlh2: int | None = Field(default=None)
+
+    
