@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.farm import ayamklr_router, ayammini_router, pickuptelur_router, report_router
+from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, report_router
 from app.database import test_database_connection
 import logging
 from fastapi import FastAPI
@@ -60,6 +60,7 @@ app.include_router(auth_router, prefix=base_kafe_url+"/auth", tags=["Auth"])
 app.include_router(image_router,prefix=base_kafe_url+"/image",tags=["image"])
 
 base_farm_url = base_url + "/farm"
+
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
 app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=["Ayamklr"])
 app.include_router(report_router.router, prefix=base_farm_url+"/report", tags=["Report"])

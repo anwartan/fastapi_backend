@@ -1,33 +1,151 @@
-import string
-
-from fastapi import APIRouter, Query
-from sqlalchemy import Integer, func, literal
-
+from fastapi import APIRouter
+from sqlalchemy import Integer, func, literal, desc
+from datetime import datetime
 from app.database import SessionDB1
-from app.model.farm import telurpro
+from app.model.farm.TempLangsirMkn import TempLangsirMkn
 from app.model.farm.TempJmlhAyam import TempJmlhAyam
 from app.model.farm.ayam import Ayam
+from app.model.farm.ayamklr import Ayamklr
 from app.model.farm.ayammini import Ayammini
 from app.model.farm.mskanakayam import Mskanakayam
-from app.model.farm.telurpro import Telurpro
-from app.model.farm.datakandang import Datakandang
-from sqlmodel import select, func, desc, literal_column
-router = APIRouter()
-@router.get("/{date}")
-def reportayamperhari(session: SessionDB1, date:str):
+from app.model.farm.telurklr import Telurklr
+from app.model.farm.telurpro import Telurpro 
+from app.model.farm.perubahandataayam import PerubahanDataAyam
+from app.model.farm.TempPickTelur import TempPickTelur
+from sqlmodel import select, func, desc
 
-    ayammini_sub_query = select(Mskanakayam.TglMsk, literal("Mini A").label("Kandang"),Ayammini.Jmlh, literal("0").cast(Integer).label("Jmlh"), literal("0").cast(Integer).label("persen"),Ayammini.JenisAyam.label("Jenisayam")).join(Ayammini, Ayammini.ID_kcl == Mskanakayam.ID).order_by(desc(Ayammini.Tgl)).limit(1)   
+from app.model.farm.telursisa import Telursisa
+from app.model.farm.telursisaarab import Telursisaarab
+router = APIRouter()
+@router.get("/langsirmkn/{date}")
+def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str = None):
+    statement = select(TempLangsirMkn.Dist, TempLangsirMkn.Kandang, TempLangsirMkn.JenisMkn, TempLangsirMkn.Goni, TempLangsirMkn.Kg, TempLangsirMkn.Input).where(TempLangsirMkn.Tgl == date)
+    if dist is not None :
+        statement = statement.where(TempLangsirMkn.Dist == dist)
+    if kandang is not None :
+        statement = statement.where(TempLangsirMkn.Kandang == kandang)
+    results = session.exec(statement).all()
+    return{
+        "data":[
+            {
+                "Dist": item.Dist,
+                "kandang": item.Kandang,
+                "JenisMkn": item.JenisMkn,
+                "Goni": item.Goni,
+                "Kg": item.Kg,
+                "Input": item.Input,
+            }
+            for item in results
+        ]
+    }
+    
+@router.get("/langsirtelur/{date}")
+def langsirtelur(session: SessionDB1, date = str,  dist : str = None, kandang : str = None):
+    statement = select(TempPickTelur.Dist, TempPickTelur.Kandang, TempPickTelur.Ikat, TempPickTelur.Ppn, TempPickTelur.Butir, TempPickTelur.Tipe, TempPickTelur.Jenisayam, TempPickTelur.Input).where(TempPickTelur.Tgl == date)
+
+    if dist is not None :
+        statement = statement.where(TempPickTelur.Dist == dist)
+    if kandang is not None :
+        statement = statement.where(TempPickTelur.Kandang == kandang)
+    results = session.exec(statement).all()
+    return {
+        "data": [
+            {
+                "Dist": item.Dist,
+                "kandang": item.Kandang,
+                "Ikat": item.Ikat,
+                "Ppn": item.Ppn,
+                "Butir": item.Butir,
+                "Tipe": item.Tipe,
+                "Jenisayam": item.Jenisayam,
+                "Input": item.Input,
+
+            }
+            for item in results
+        ]
+    }
+@router.get("/telur-klr/{date}")
+def telurklrlayer(session: SessionDB1, date: str):
+    statement = select(
+        Telurklr.Nama,
+        Telurklr.Jmlh,
+        Telurklr.JenisTelur
+    ).where(
+        Telurklr.Tgl == date
+    ).order_by( Telurklr.Nama,
+    Telurklr.JenisTelur)
+
+    data = session.exec(statement).all()
+
+    return {
+        "data": [
+            {
+                "Nama": item.Nama,
+                "Jmlh": item.Jmlh,
+                "JenisTelur": item.JenisTelur,
+            }
+            for item in data
+        ]
+    }
+@router.get("/sisa-telur/{date}")
+def telursisalayer(session: SessionDB1, date:str):
+    layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
+    data__layer = session.exec(layer_statement).first()
+    arab_statement = select(Telursisaarab.JmlhLap, Telursisaarab.JmlhMlm).where(Telursisaarab.Tgl == date)
+    data__arab = session.exec(arab_statement).first()
+    return {
+        "data": [
+            {
+                "tipe":"Layer",
+                "lap": data__layer.JmlhLap,
+                "mlm": data__layer.JmlhMlm,
+            },
+            {
+                "tipe":"arab",
+                "lap": data__arab.JmlhLap,
+                "mlm": data__arab.JmlhMlm,
+            }
+        ]
+    }
+
+@router.get("/{date}")
+def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
+    print("date", date)
+    print("filter", filter)
+    ayammini_sub_query = select(Mskanakayam.TglMsk, literal("Mini A").label("Kandang"),Ayammini.Jmlh, literal("0").cast(Integer).label("Jmlh"), literal("0").cast(Integer).label("persen"),Ayammini.JenisAyam.label("Jenisayam"), literal("0").cast(Integer).label("Indexing"),literal("0").cast(Integer).label("ID") ).join(Ayammini, Ayammini.ID_kcl == Mskanakayam.ID).order_by(desc(Ayammini.Tgl)).limit(1)   
     ayammini_results = session.exec(ayammini_sub_query).all()
 
     ayam_sub_query = select(Ayam.ID,Ayam.Kandang,Mskanakayam.TglMsk,Ayam.Jenisayam).join(Ayammini, Ayammini.ID == Ayam.ID_Mini).join(Mskanakayam, Ayammini.ID_kcl == Mskanakayam.ID).subquery()
-    TempJmlhAyam_sub_query = select(TempJmlhAyam.Kandang, TempJmlhAyam.Jmlh).where(TempJmlhAyam.Tgl == date).subquery()
+
+    TempJmlhAyam_sub_query = select(TempJmlhAyam.Kandang, TempJmlhAyam.Indexing).where(TempJmlhAyam.Tgl == date).subquery()
+
     telurpro_sub_query = select(Telurpro.ID, Telurpro.Jmlh,Telurpro.Persen).where(Telurpro.Tgl == date).subquery()
-    statement = select(ayam_sub_query.c.TglMsk,TempJmlhAyam_sub_query.c.Kandang, TempJmlhAyam_sub_query.c.Jmlh, telurpro_sub_query.c.Jmlh, telurpro_sub_query.c.Persen, ayam_sub_query.c.Jenisayam
+    sub_perubahan_data_ayam = select(PerubahanDataAyam.ID, PerubahanDataAyam.JmlhSkrg, PerubahanDataAyam.Tgl, func.row_number().over(partition_by=PerubahanDataAyam.ID, order_by=PerubahanDataAyam.Tgl.desc()).label("rn")).where(PerubahanDataAyam.Tgl <= date).subquery()
+    
+    selected_date = datetime.strptime(date, "%Y-%m-%d").date()
+
+    start_of_month = selected_date.replace(day=1)
+   
+    if selected_date == start_of_month:
+        start_of_month = selected_date.replace(month=selected_date.month - 1, day=1)
+
+    sub_jlh_klr = select(Ayamklr.ID, func.sum(Ayamklr.mati +Ayamklr.sakit +Ayamklr.jual).label("jlh_klr")).join(Ayam, Ayam.ID == Ayamklr.ID).where(Ayamklr.Tgl >= start_of_month, Ayamklr.Tgl < date).group_by(Ayamklr.ID).subquery()
+    sub_ayam_sekarang = select(sub_perubahan_data_ayam.c.ID, sub_perubahan_data_ayam.c.JmlhSkrg, func.coalesce(sub_jlh_klr.c.jlh_klr, 0).label("jlh_klr"), 
+                               (sub_perubahan_data_ayam.c.JmlhSkrg - func.coalesce(sub_jlh_klr.c.jlh_klr, 0)).label("JmlhSkrgIncKlr")
+                                ).join(sub_jlh_klr, sub_jlh_klr.c.ID == sub_perubahan_data_ayam.c.ID, isouter=True).where(sub_perubahan_data_ayam.c.Tgl <= date).where(sub_perubahan_data_ayam.c.rn == 1).subquery()
+    print("sub_ayam_sekarang", sub_ayam_sekarang)
+    statement = select(ayam_sub_query.c.TglMsk,TempJmlhAyam_sub_query.c.Kandang, sub_ayam_sekarang.c.JmlhSkrgIncKlr ,telurpro_sub_query.c.Jmlh, telurpro_sub_query.c.Persen, ayam_sub_query.c.Jenisayam, TempJmlhAyam_sub_query.c.Indexing, ayam_sub_query.c.ID
     ).join(TempJmlhAyam_sub_query, TempJmlhAyam_sub_query.c.Kandang == ayam_sub_query.c.Kandang
-    ).join(telurpro_sub_query, telurpro_sub_query.c.ID == ayam_sub_query.c.ID)
+    ).join(telurpro_sub_query, telurpro_sub_query.c.ID == ayam_sub_query.c.ID
+    ).join(sub_ayam_sekarang, sub_ayam_sekarang.c.ID == ayam_sub_query.c.ID)
+   
+    if(filter == "ID"):
+        statement = statement.order_by(ayam_sub_query.c.ID.asc())
+    else:
+        statement = statement.order_by(TempJmlhAyam_sub_query.c.Indexing.asc())
+
     results = session.exec(statement).all()
     mix = ayammini_results + results
+    print("hasil", mix)
 
-
-    return {"data": [{"Tgl": mix[0], "Kandang": mix[1], "Jmlh": mix[2], "JmlhPro": mix[3], "persen":mix[4], "jenis":mix[5]} for mix in mix]}
-
+    return {"data": [{"Tgl": mix[0], "Kandang": mix[1], "Jmlh": mix[2], "JmlhPro": mix[3], "persen":mix[4], "jenis":mix[5], "ID":mix[7]} for mix in mix]}
