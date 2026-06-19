@@ -1,32 +1,36 @@
 import select
 from unittest import result
 
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI,HTTPException
 import app
-from app.database import SessionDB1, get_session
+from app.auth import get_current_user
+from app.database import SessionDBKafe, get_session
 from sqlmodel import Session, select,func
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.orderstock import Orderstock
+from app.model.kafe.belanja import Belanja
+from app.request.pengecekaan_request import PengecekaanRequest
 router = APIRouter()
 
     
-# @router.get("/")
-# def get(session: SessionDB1,limit: int = 10, offset: int = 0, category: str = None):
-#     query = select(Bborder).where(Bborder.Category == category).limit(limit).offset(offset)
-#     results = session.exec(query).all()
-#     query_total = select(func.count(Bborder.IDOrder)).where(Bborder.Category == category)
-#     total = session.exec(query_total).first()
-    
-#     return {"data": results,
-#             "paging": {
-#                 "limit": limit,
-#                 "offset": offset,
-#                 "total": total
-#             }}
+@router.get("/getall")
+def get_all(
+    session: SessionDBKafe,
+    current_user: dict = Depends(get_current_user)
+):
+    query = (
+        select(Bborder)
+        .where(Bborder.Checked == 0)
+        .order_by(Bborder.IDOrder.desc())
+    )
 
+    results = session.exec(query).all()
 
+    return {
+        "data": results
+    }
 @router.get("/")
-def get_bborder(session: Session = Depends(get_session)):
+def get_bborder(session: Session = Depends(get_session),current_user: dict = Depends(get_current_user)):
     try:
         subquery = (
             select(func.count(Orderstock.IDOrder))
@@ -58,9 +62,53 @@ def get_bborder(session: Session = Depends(get_session)):
     except Exception as e:
         return {"error": str(e)}    
 
+@router.put("/pengecekaan")
+def pengecekaan(
+    req: PengecekaanRequest,
+    session: SessionDBKafe,
+   # current_user: dict = Depends(get_current_user)
+):
+
+    if req.category == "OB":
+        query = select(Belanja).where(
+            Belanja.ID == req.id,
+            Belanja.Jenis == req.jenis
+        )
+    else:
+        query = select(Orderstock).where(
+            Orderstock.IDOrder == req.id,
+            Orderstock.Jenis == req.jenis
+        )
+    
+
+    data = session.exec(query).first()
+    data1=session.exec(
+        select(Bborder).where(Bborder.IDOrder==req.id)
+    ).first()
+    print(data)
+
+    if data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan"
+        )
+
+  
+    data.Checked = 1  
+    if data1:
+        data1.Checked = 1
+        session.add(data1)
+    session.add(data)
+    session.commit()
+    session.refresh(data)
+
+    return {
+        "message": "Berhasil update",
+        "data": data
+    }
 
 @router.get("/{Category}/{Tanggal}")
-def GetBYCategoryAndTanggal(session:SessionDB1,Category:str,Tanggal:str):
+def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,current_user: dict = Depends(get_current_user)):
     
     query = select(Bborder).where(Bborder.Category   == Category, Bborder.Tgl == Tanggal)
     results = session.exec(query).first()
@@ -78,8 +126,9 @@ def GetBYCategoryAndTanggal(session:SessionDB1,Category:str,Tanggal:str):
         results = session.exec(querysearch).first()
         return {"message": "Data tidak ditemukan"}
     return {"data": results}
+
 @router.get("/{Category}")
-def get(session: SessionDB1,Category:str,limit: int = 10, offset: int = 0):
+def get(session: SessionDBKafe,Category:str,limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
     query = select(Bborder).limit(limit).offset(offset).where(Bborder.Category == Category).order_by(Bborder.IDOrder.desc())
 
     results = session.exec(query).all()
@@ -91,3 +140,26 @@ def get(session: SessionDB1,Category:str,limit: int = 10, offset: int = 0):
                 "offset": offset,
                 "total": total
             }}
+
+@router.get("/{id}/{category}/pengecekaan")
+def get_item_by_category_and_id(
+    id: int,
+    category: str,
+    session: SessionDBKafe,
+    current_user: dict = Depends(get_current_user)
+):
+    if category == "OB":
+        query = select(Belanja).where(
+            Belanja.ID == id,
+            Belanja.Checked != 1
+        )
+    elif category == "OS":
+        query = select(Orderstock).where(
+            Orderstock.IDOrder == id,
+            Orderstock.Checked != 1
+        )
+    else:
+        return {"data": []}
+
+    total = session.exec(query).all()
+    return {"data": total}

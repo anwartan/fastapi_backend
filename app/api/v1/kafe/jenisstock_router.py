@@ -1,21 +1,20 @@
-import select
-
-
-from fastapi import APIRouter
-from app.database import SessionDB1
+from fastapi import APIRouter, HTTPException, BackgroundTasks,FastAPI,File,UploadFile, Form, Depends
+from app.auth import get_current_user
+from app.database import SessionDBKafe
 from sqlmodel import select,func
 from app.model.kafe.jnsstock import Jnsstock
 
 router = APIRouter()
-def get_latest_id(session: SessionDB1):
+def get_latest_id(session: SessionDBKafe):
     query = select(func.max(Jnsstock.ID))
     lates_id= session.exec(query).first()
     return lates_id if lates_id is not None else 0
-def generate_new_id(session: SessionDB1):
+def generate_new_id(session: SessionDBKafe):
     latest_id = get_latest_id(session)
     return latest_id + 1
+
 @router.post("/post")
-def create(jnsstock: Jnsstock, session: SessionDB1):
+def create(jnsstock: Jnsstock, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     jnsstock.ID = generate_new_id(session)
     session.add(jnsstock)
     session.commit()
@@ -23,7 +22,7 @@ def create(jnsstock: Jnsstock, session: SessionDB1):
     return {"message": "jenis stock created successfully"}
 
 @router.get("/")
-def get(session: SessionDB1,search: str = None,limit: int = 10, offset: int = 0):
+def get(session: SessionDBKafe,search: str = None,limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
     query = select(Jnsstock).offset(offset).limit(limit)
     if search:
         query = query.where(Jnsstock.Jenis.like(f"%{search}%"))
@@ -39,7 +38,7 @@ def get(session: SessionDB1,search: str = None,limit: int = 10, offset: int = 0)
                 "total": total
             }}
 @router.get("/{jenis}")
-def get_by_jenis(jenis: str, session: SessionDB1):
+def get_by_jenis(jenis: str, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     query = select(Jnsstock).where(Jnsstock.Jenis.like(f"%{jenis}%"))
     results = session.exec(query).all()
   
