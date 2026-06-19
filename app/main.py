@@ -13,7 +13,6 @@ from app.api.v1.kafe.orderstock_router import router as order_router
 from app.api.v1.kafe.bborder import router as bborder_router
 from app.api.v1.kafe.image_router import router as image_router
 from app.api.v1.kafe.auth_router import router as auth_router
-from app.api.v1.kafe.mail_router import router as mail_router
 
 logging.basicConfig(
     level=logging.INFO,
