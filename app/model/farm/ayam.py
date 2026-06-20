@@ -6,4 +6,5 @@ class Ayam(SQLModel, table=True):
     ID: int = Field(default=None, primary_key=True,)
     ID_Mini: int | None = Field(default=None)
     Kandang: str | None = Field(default=None)
+    Indexing : int 
     Jenisayam: str
