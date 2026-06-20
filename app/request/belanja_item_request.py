@@ -6,7 +6,6 @@ class BelanjaItemRequest(BaseModel):
     id: int|None=None
     jenis_stock: str
     qty: int
-    keterangan_jenis_stock:str
     @field_validator('qty')
     def validate_qty(cls, value):
         if value <= 0:
