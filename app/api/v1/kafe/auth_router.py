@@ -3,17 +3,17 @@ from sqlmodel import select
 
 from fastapi import APIRouter, Depends,HTTPException 
 
-from app.services.AuthService import AuthServiceInstance
+from app.services.AuthService import AuthService, AuthServiceInstance
 from app.services.email_service import send_otp_email
-from app.services.otp_service import generate_otp, save_otp, verify_otp
 from app.auth import create_access_token, get_current_user, get_password_hash
-from app.model.kafe.member import member
+from app.model.kafe.member import Member
 from app.database import SessionDBKafe, SessionDBKafeLogin
 from app.request.LoginRequest import LoginRequest
 from app.request.ceateuserrequest import CreateuserRequest
 from app.request.change_password_request import ChangePasswordRequest
 from app.request.forget_password_request import ForgotPasswordRequest
 from app.request.verify_otp_request import VerifyOtpRequest
+from app.services.veriyemail import VerifyEmail
 
 router=APIRouter()
 @router.post("/register")
@@ -31,10 +31,10 @@ def register(formdata: CreateuserRequest, session: SessionDBKafe):
 @router.post("/login")
 def user_login(formdata: LoginRequest, session: SessionDBKafeLogin):
     username=formdata.username
-    user=select(member).where(member.Username==username)
+    user=select(Member).where(Member.Username==username)
     user=session.exec(user).first() 
     if user == None:
-        raise HTTPException(status_code=404, detail="");
+        raise HTTPException(status_code=404, detail="")
     # verify_password=verify_password(formdata.password, user.PW)
     verify_password=formdata.password == user.PW
     if not verify_password:
@@ -57,7 +57,7 @@ def change_password(
 ):
 
     user = session.exec(
-        select(member).where(member.Username == request.username)
+        select(Member).where(Member.Username == request.username)
     ).first()
 
     if not user:
@@ -74,48 +74,17 @@ def change_password(
 
 
 
-@router.post("/forgotpassword")
-async def forgot_password(
-    req: ForgotPasswordRequest,
-    session: SessionDBKafeLogin
-):
-
-    user = session.exec(
-    select(member).where(
-        member.Username == req.username,
-        member.Email == req.email
-    )
-    ).first()
-
-
-    if not user:
-        raise HTTPException(
-            status_code=400,
-            detail="Username atau email tidak cocok"
-        )
-
-    # 🔐 generate OTP
-    otp = generate_otp()
-    save_otp(req.email, otp)
-
-    # 📧 kirim email
-    await send_otp_email(req.email, otp)
-
-    return {"message": "OTP berhasil dikirim"}
-
-@router.post("/verifyotp")
-def verify(req: VerifyOtpRequest):
-
-    if not verify_otp(req.email, req.otp):
-        raise HTTPException(status_code=400, detail="OTP salah/expired")
-
-    return {"message": "OTP valid"}
-
-
 @router.get("/send-verification/{email}")
 async def get_auth_router(
         email:str,
         authservice: AuthServiceInstance,
+        current_user: Member = Depends(get_current_user)
 ):
-    await authservice.SendVerifyEmail(email)
-    return{"message":"wjonfouiwnfouie3rfbu9erbf"}
+    await authservice.SendVerifyEmail(email,current_user.Username)
+    return{"message":"Kode sudah tterkirim ke email anda"}
+@router.post("/verify-email")
+def verify_email(req:VerifyEmail, authService:AuthServiceInstance,
+                 current_user: Member = Depends(get_current_user)
+    ):
+    authService.VerifyEmail(req.email,current_user.Username, req.code)
+    return{"message":"berhasil verifikasi"}

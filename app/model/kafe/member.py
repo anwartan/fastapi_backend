@@ -3,7 +3,7 @@ from sqlmodel import Field, SQLModel
 
 from datetime import date
 
-class member(SQLModel, table=True):
+class Member(SQLModel, table=True):
     __tablename__ = "member"
     ID:int = Field(default=None, primary_key=True)
     Nama: str
@@ -19,3 +19,6 @@ class member(SQLModel, table=True):
     Tgl:date
     Email:str
     VerifyDate:date
+    TokenOtp:str |None
+    TokenAttemptOtp:int|None
+    TokenExpiredDate:date|None

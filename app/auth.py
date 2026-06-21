@@ -5,7 +5,7 @@ from jose import JWTError
 import jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
-from app.model.kafe.member import member
+from app.model.kafe.member import Member
 from sqlmodel import select
 from app.database import SessionDBKafeLogin, get_session_kafe_login
 
@@ -34,7 +34,7 @@ def decode_access_token(token: str):
 def get_current_user(
     session: SessionDBKafeLogin,
     token: str = Depends(oauth2_scheme),
-):
+)-> Member:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -49,7 +49,7 @@ def get_current_user(
     if username is None:
         raise credentials_exception
 
-    user_statement = select(member).where(member.Username == username)
+    user_statement = select(Member).where(Member.Username == username)
     user = session.exec(user_statement).first()
 
     if user is None:
