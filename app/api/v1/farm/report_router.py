@@ -7,6 +7,7 @@ from app.model.farm.TempJmlhAyam import TempJmlhAyam
 from app.model.farm.ayam import Ayam
 from app.model.farm.ayamklr import Ayamklr
 from app.model.farm.ayammini import Ayammini
+from app.model.farm.datakandang import Datakandang
 from app.model.farm.mskanakayam import Mskanakayam
 from app.model.farm.telurklr import Telurklr
 from app.model.farm.telurpro import Telurpro 
@@ -23,7 +24,7 @@ def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str
     if dist is not None :
         statement = statement.where(TempLangsirMkn.Dist == dist)
     if kandang is not None :
-        statement = statement.where(TempLangsirMkn.Kandang == kandang)
+        statement = statement.where(TempLangsirMkn.Kandang == kandang).indexing()
     results = session.exec(statement).all()
     return{
         "data":[
@@ -41,7 +42,17 @@ def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str
     
 @router.get("/langsirtelur/{date}")
 def langsirtelur(session: SessionDB1, date = str,  dist : str = None, kandang : str = None):
-    statement = select(TempPickTelur.Dist, TempPickTelur.Kandang, TempPickTelur.Ikat, TempPickTelur.Ppn, TempPickTelur.Butir, TempPickTelur.Tipe, TempPickTelur.Jenisayam, TempPickTelur.Input).where(TempPickTelur.Tgl == date)
+    statement = select(
+        Ayam.Indexing.label("Kandang_ID"),
+        TempPickTelur.Dist, 
+        TempPickTelur.Kandang, 
+        TempPickTelur.Ikat, 
+        TempPickTelur.Ppn, 
+        TempPickTelur.Butir, 
+        TempPickTelur.Tipe,
+          TempPickTelur.Jenisayam, TempPickTelur.Input
+        ).where(TempPickTelur.Tgl == date
+        ).join(Ayam, Ayam.Kandang == TempPickTelur.Kandang)
 
     if dist is not None :
         statement = statement.where(TempPickTelur.Dist == dist)
@@ -51,14 +62,15 @@ def langsirtelur(session: SessionDB1, date = str,  dist : str = None, kandang : 
     return {
         "data": [
             {
-                "Dist": item.Dist,
-                "kandang": item.Kandang,
-                "Ikat": item.Ikat,
-                "Ppn": item.Ppn,
-                "Butir": item.Butir,
-                "Tipe": item.Tipe,
-                "Jenisayam": item.Jenisayam,
-                "Input": item.Input,
+                "Kandang_ID": item[0],
+                "Dist": item[1],
+                "kandang": item[2],
+                "Ikat": item[3],
+                "Ppn": item[4],
+                "Butir": item[5],
+                "Tipe": item[6],
+                "Jenisayam": item[7],
+                "Input": item[8],
 
             }
             for item in results
