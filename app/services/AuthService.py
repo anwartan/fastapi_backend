@@ -1,16 +1,14 @@
 
 from datetime import datetime
-from enum import member
 
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session,select
-from app.database import SessionDBKafeLogin,get_session_kafe_login
+from sqlmodel import select
+from app.database import SessionDBKafeLogin
 from typing import Annotated
 from fastapi import Depends, HTTPException
 from app.model.kafe.member import Member
 from fastapi_mail import MessageSchema,MessageType
 from app.mail import Mail
-from app.services import otp_service
 from app.services.otp_service import OtpServiceInstance
 class AuthService:
     def __init__(self,session:SessionDBKafeLogin,mail:Mail,otp_service:OtpServiceInstance):
