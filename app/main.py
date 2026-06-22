@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, report_router
+from app.api.v1.kafe import price_router
 from app.database import test_database_connection
 import logging
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from app.api.v1.kafe.orderstock_router import router as order_router
 from app.api.v1.kafe.bborder import router as bborder_router
 from app.api.v1.kafe.image_router import router as image_router
 from app.api.v1.kafe.auth_router import router as auth_router
+from app.api.v1.kafe.price_router import router as price_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,6 +59,7 @@ app.include_router(order_router, prefix=base_kafe_url+"/orderstock", tags=["Orde
 app.include_router(bborder_router, prefix=base_kafe_url+"/bborder", tags=["BBOrder"]) 
 app.include_router(auth_router, prefix=base_kafe_url+"/auth", tags=["Auth"])
 app.include_router(image_router,prefix=base_kafe_url+"/image",tags=["image"])
+app.include_router(price_router,prefix=base_kafe_url+"/pricedetail",tags=["price"])
 
 base_farm_url = base_url + "/farm"
 

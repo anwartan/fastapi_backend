@@ -16,11 +16,7 @@ def get_all(
     session: SessionDBKafe,
     current_user: dict = Depends(get_current_user)
 ):
-    # if current_user.get("Divisi") != "Admin":
-    #     raise HTTPException(status_code=401, detail="Unauthorized")
-    # if current_user.get("Tingkat") !="EXPERT" and current_user.get("Tingkat") !="ADVANCE":
-    #     raise HTTPException(status_code=401, detail="Unauthorized")
-
+ 
     query = (
         select(Bborder)
         .where(Bborder.Checked == 0)
