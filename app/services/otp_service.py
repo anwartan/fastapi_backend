@@ -1,4 +1,3 @@
-from enum import member
 import hashlib
 import hmac
 import random
