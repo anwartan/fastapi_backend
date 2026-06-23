@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
+
 from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, produksiluar_router, report_router
-=======
+
 from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, report_router
 from app.api.v1.kafe import price_router
->>>>>>> ad69f68d5253acb473765f55996d05bf12d7175d
 from app.database import test_database_connection
 import logging
 from fastapi import FastAPI
