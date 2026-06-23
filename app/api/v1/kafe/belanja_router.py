@@ -69,7 +69,7 @@ def delete(id: int,jenis: str, session: SessionDBKafe,current_user: dict = Depen
 
 @router.post("/create")
 def create(session: SessionDBKafe, order:CreateOrderRequest, bgTask: BackgroundTasks,current_user: dict = Depends(get_current_user)):
-
+    print("halo")
     new_id = get_latest_id(session) + 1
     date=datetime.strptime(order.tgl, "%Y-%m-%d")
     new_order = Bborder(
@@ -116,10 +116,10 @@ def create(session: SessionDBKafe, order:CreateOrderRequest, bgTask: BackgroundT
     session.commit()
     session.refresh(new_order)
     # token1  = "cW0fJxjrSyWCh0GfyR7bSS:APA91bFee7OaT9QHGJFDNOGh5elQ1N5yjt66krKTgUEWmvHGJ0ECp913gHidoSRpbs1Feu2ej4_sYM4aViYf5pUCPND3E5XMxN_i4wS_WR49M7uNA6AILiI";
-    token2="cjVg-hwsR2qwrwTR5S0bc4:APA91bHPByN9Qiae-zOiK1zFcvBh7ImVbm1Yf1DAcD1LNpa23zwhYArL0HYukX6-YA8uuyqazl5wUsslxDNbtk8FYRvRx6jBk-nKQz8mkC1fFwY4vTzpfjQ";
+    token2="fRZAGKrjQF-WLuY4tokFvW:APA91bGVSkLyv3IdM_acdFl7ovxUJPjg04-zQc0tr700Ljejri33NsFsq9CxdIgtL5G1_DszgRT3t6FdPRtBKGlUs-ZnnpeHzxB2su6_j-Ioyz7SAA1xGdA";
     # token3="cPuLbXpaT8OXj6BTU79y70:APA91bGZKSCm-kEGzZXZ4ddDTUgEZR-gsSHEbYDImi2Ot838evPwWElRTNGRdBGShP_7Ea2_Z3T_q5rytK1OchtINDfcTtMgtcyZIT0hGScTKuEMrhcYSdY";
     # FirebaseService.send_notification(token1, "New Order Created", "A new order has been created.") ## delay
-    FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
+    # FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
     # # bgTask.add_task(order_stock_created_listener)
     print("Order created, background task added")
     return{
