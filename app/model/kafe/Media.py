@@ -1,5 +1,4 @@
 from sqlmodel import SQLModel, Field
-import os
 
 class Media(SQLModel,table=True):
     __tablename__="Media"

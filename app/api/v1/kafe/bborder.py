@@ -27,7 +27,7 @@ def get_all(
 
     return {
         "data": results
-    }
+    }   
 @router.get("/")
 def get_bborder(session: Session = Depends(get_session),current_user: dict = Depends(get_current_user)):
     try:
