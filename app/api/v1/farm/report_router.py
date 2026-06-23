@@ -8,6 +8,7 @@ from app.model.farm.ayam import Ayam
 from app.model.farm.ayamklr import Ayamklr
 from app.model.farm.ayammini import Ayammini
 from app.model.farm.datakandang import Datakandang
+from app.model.farm.harga import Harga
 from app.model.farm.mskanakayam import Mskanakayam
 from app.model.farm.telurklr import Telurklr
 from app.model.farm.telurpro import Telurpro 
@@ -119,6 +120,11 @@ def telursisalayer(session: SessionDB1, date:str):
             }
         ]
     }
+@router.get("/harga/{date}")
+def harga(session:SessionDB1, date:str):
+    statment = select(Harga.Harga, Harga.Jenis).where(Harga.Tgl == date)
+    result = session.exec(statment).all()
+    return [{"Harga":r.Harga, "Jenis":r.Jenis} for r in result]
 
 @router.get("/{date}")
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
