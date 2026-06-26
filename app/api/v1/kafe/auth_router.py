@@ -10,7 +10,6 @@ from app.model.kafe.member import Member
 from app.database import SessionDBKafe, SessionDBKafeLogin
 from app.request.LoginRequest import LoginRequest
 from app.request.ceateuserrequest import CreateuserRequest
-from app.request.change_password_request import ChangePasswordRequest
 from app.request.forget_password_request import ForgotPasswordRequest
 from app.request.verify_otp_request import VerifyOtpRequest
 from app.services.veriyemail import VerifyEmail
@@ -50,27 +49,6 @@ def read_users_me(current_user: dict = Depends(get_current_user)):
 
 
 
-@router.put("/changepassword")
-def change_password(
-    request:ChangePasswordRequest,
-    session: SessionDBKafeLogin
-):
-
-    user = session.exec(
-        select(Member).where(Member.Username == request.username)
-    ).first()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-
-    
-
-    user.PW = request.new_password
-
-    session.add(user)
-    session.commit()
-
-    return {"message": "Password berhasil diubah"}
 
 
 
@@ -81,10 +59,23 @@ async def get_auth_router(
         current_user: Member = Depends(get_current_user)
 ):
     await authservice.SendVerifyEmail(email,current_user.Username)
-    return{"message":"Kode sudah tterkirim ke email anda"}
+    return{"message":"Kode sudah terkirim ke email anda"}
+@router.get("/send-forgetpassword-code/{email}")
+async def get_ForgetPassword_code(
+        email:str,
+        authservice: AuthServiceInstance,
+):
+    await authservice.sendForgotPassword(email);
+    return{"message":"Kode sudah terkirim ke email anda"}
 @router.post("/verify-email")
 def verify_email(req:VerifyEmail, authService:AuthServiceInstance,
                  current_user: Member = Depends(get_current_user)
     ):
     authService.VerifyEmail(req.email,current_user.Username, req.code)
     return{"message":"berhasil verifikasi"}
+@router.post("/verify-and-execute-password")
+def verifyAndExecutePassword(
+        req:VerifyOtpRequest, authService:AuthServiceInstance,
+    ):
+    authService.verifyaAndExecuteForgetPassword(req.otp,req.new_password,req.email)
+    return{"message":"Password Berhasil DiUbah"}

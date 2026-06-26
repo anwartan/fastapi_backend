@@ -1,3 +1,4 @@
+from click import File
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, Integer
 
@@ -15,7 +16,8 @@ class Belanja(SQLModel, table=True):
     Divisi: str=Field(default=None)
     ket: str=Field(default=None)
     Checked: bool=Field(default=None)
-
+    ID_UserBelanja:int=Field(default=None)
+    
     @staticmethod
     def subject_type():
         return "OB"
