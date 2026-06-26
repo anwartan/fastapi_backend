@@ -13,8 +13,8 @@ class Orderstock(SQLModel, table=True):
     Divisi: str
     Inputer: int
     Ket: str
-    JmlhPenerimaan: int
     Checked:int
+    ID_Penerimaan:int 
     @staticmethod
     def subject_type():
         return "OS"

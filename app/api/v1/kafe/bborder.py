@@ -5,6 +5,7 @@ from app.auth import get_current_user
 from app.database import SessionDBKafe, get_session
 from sqlmodel import Session, select,func
 from app.model.kafe.bboreder import Bborder
+from app.model.kafe.member import Member
 from app.model.kafe.orderstock import Orderstock
 from app.model.kafe.belanja import Belanja
 from app.request.pengecekaan_request import PengecekaanRequest
@@ -139,7 +140,43 @@ def get(session: SessionDBKafe,Category:str,limit: int = 10, offset: int = 0,cur
                 "offset": offset,
                 "total": total
             }}
+@router.get("/{category}/{divisi}/divisi")
+def get_bborder(
+    session: SessionDBKafe,
+    category: str,
+    divisi: str,
+    limit: int = 10,
+    offset: int = 0,
+):
+    if category.upper() == "OS":
+        query = (
+            select(Bborder)
+            .join(Orderstock, Orderstock.IDOrder == Bborder.IDOrder)
+            .where(
+                Bborder.Category == category,
+                Orderstock.Divisi == divisi
+            )
+            .distinct()
+            .order_by(Bborder.IDOrder.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    else:  # OB
+        query = (
+            select(Bborder)
+            .join(Belanja, Belanja.ID == Bborder.IDOrder)
+            .where(
+                Bborder.Category == category,
+                Belanja.Divisi == divisi
+            )
+            .distinct()
+            .order_by(Bborder.IDOrder.desc())
+            .limit(limit)
+            .offset(offset)
+        )
 
+    result = session.exec(query).all()
+    return result
 @router.get("/{id}/{category}/pengecekaan")
 def get_item_by_category_and_id(
     id: int,
@@ -162,3 +199,5 @@ def get_item_by_category_and_id(
 
     total = session.exec(query).all()
     return {"data": total}
+
+

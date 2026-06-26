@@ -9,6 +9,7 @@ from sqlmodel import select,func
 
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
+from app.model.kafe.member import Member
 from app.model.kafe.orderstock import Orderstock
 from app.request.createOrderRequestJenisStock import CreateOrderStockRequest
 from datetime import datetime 
@@ -50,7 +51,7 @@ def get_latest_id(session: SessionDBKafe,current_user: dict = Depends(get_curren
 
 
 @router.post("/create")
-def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: dict = Depends(get_current_user)):
+def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: Member = Depends(get_current_user)):
     new_id = get_latest_id(session,current_user) + 1
     date=datetime.strptime(order.tgl, "%Y-%m-%d").date()    
     new_order = Bborder(
@@ -58,7 +59,7 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: d
         Tgl=date,
         Total=0,
         Aktif=True,
-        Inputer="",
+        Inputer=current_user.ID,
         Category=order.category,
         Checked=False,
         ID_Check=0,
@@ -85,11 +86,13 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: d
             Jmlh=item.qty,
             JmlhInp=0,
             unit=jenis_db.Unit,
-            Divisi="",
+            Divisi=current_user.Divisi,
             JmlhPenerimaan=0,
-            Inputer=0,
+            Inputer=current_user.ID,
             Checked=False,
-            Ket=item.keterangan_jenis_stock         )
+            Ket=item.keterangan_jenis_stock,
+            ID_Penerima=0    
+              )
         session.add(order_stock)
     session.commit()
     session.refresh(new_order)
@@ -127,7 +130,6 @@ def update_orderstock(
     # update field
     data.Ket = request.keterangan_jenis_stock
     data.Jmlh = request.qty
-
     # simpan
     session.add(data)
     session.commit()
@@ -143,7 +145,7 @@ async def penerimaan_orderstock(
     penerimaan: InputPenerimaanOrderstockRequest = Depends(
         InputPenerimaanOrderstockRequest.as_form
     ),
-    current_user: dict = Depends(get_current_user),
+    current_user: Member = Depends(get_current_user),
     files: list[UploadFile] = File(...),
     mediaService: MediaService = Depends(get_media_service) 
 ):
@@ -164,7 +166,8 @@ async def penerimaan_orderstock(
         }
 
     # update data
-    input_orderstock.JmlhPenerimaan = penerimaan.JmlhPenerimaan
+    input_orderstock.JmlhInp = penerimaan.JmlhPenerimaan,
+    input_orderstock.ID_Penerimaan=current_user.ID
 
     # optional
     
@@ -187,7 +190,7 @@ async def penerimaan_orderstock(
 @router.get("/{id}/jenis")
 def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(get_current_user) ):
    
-    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.JmlhPenerimaan == 0)
+    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.JmlhInp == 0)
     results = session.exec(query).all()
     result_mapped = []
     for result in results:

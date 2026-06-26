@@ -1,4 +1,6 @@
 
+from typing import Optional
+
 from sqlmodel import Field, SQLModel
 
 from datetime import date
@@ -22,3 +24,5 @@ class Member(SQLModel, table=True):
     TokenOtp:str |None
     TokenAttemptOtp:int|None
     TokenExpiredDate:date|None
+    Device_id:str|None
+    TokenBiometric : Optional[str]

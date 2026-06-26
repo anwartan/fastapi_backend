@@ -2,11 +2,12 @@ import select
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks,File,UploadFile, Depends
 from app.auth import get_current_user
-from app.database import SessionDBKafe
+from app.database import SessionDBKafe, SessionDBKafeLogin
 from sqlmodel import select,func
 from app.model.kafe.belanja import Belanja
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
+from app.model.kafe.member import Member
 from app.request import belanja_item_request, resetbelanjadetail
 from app.request import belanjaan_detail_item_request
 from app.request.create_order_request import CreateOrderRequest
@@ -68,25 +69,30 @@ def delete(id: int,jenis: str, session: SessionDBKafe,current_user: dict = Depen
     return {"message": "belanja deleted successfully"}
 
 @router.post("/create")
-def create(session: SessionDBKafe, order:CreateOrderRequest, bgTask: BackgroundTasks,current_user: dict = Depends(get_current_user)):
-    print("halo")
+def create(
+    session: SessionDBKafe,
+    order: CreateOrderRequest,
+    bgTask: BackgroundTasks,
+    current_user: Member = Depends(get_current_user),
+):
+   
+
     new_id = get_latest_id(session) + 1
-    date=datetime.strptime(order.tgl, "%Y-%m-%d")
+    date = datetime.strptime(order.tgl, "%Y-%m-%d")
+
     new_order = Bborder(
         IDOrder=new_id,
         Tgl=date,
         Total=0,
         Aktif=True,
-        Inputer="",
+        Inputer=current_user.ID,
         Category=order.category,
         Checked=False,
         ID_Check=0,
         Ket=order.ket
-
-
     )
     session.add(new_order)
-    
+
     for item in order.items:
         jenis_db = session.exec(
             select(Jnsstock).where(Jnsstock.Jenis == item.jenis_stock)
@@ -97,6 +103,7 @@ def create(session: SessionDBKafe, order:CreateOrderRequest, bgTask: BackgroundT
                 status_code=400,
                 detail=f"Jenis stock '{item.jenis_stock}' tidak ditemukan"
             )
+
         order_belanja = Belanja(
             ID=new_id,
             Jenis=item.jenis_stock,
@@ -107,19 +114,21 @@ def create(session: SessionDBKafe, order:CreateOrderRequest, bgTask: BackgroundT
             ID_Belanja=0,
             Price=0,
             Unit=jenis_db.Unit,
-            Divisi="",
+            Divisi=current_user.Divisi,
             Checked=False,
-            ket=""
+            ket="",
+            ID_UserBelanja=0
         )
-    
         session.add(order_belanja)
+
     session.commit()
     session.refresh(new_order)
+
     # token1  = "cW0fJxjrSyWCh0GfyR7bSS:APA91bFee7OaT9QHGJFDNOGh5elQ1N5yjt66krKTgUEWmvHGJ0ECp913gHidoSRpbs1Feu2ej4_sYM4aViYf5pUCPND3E5XMxN_i4wS_WR49M7uNA6AILiI";
-    token2="fRZAGKrjQF-WLuY4tokFvW:APA91bGVSkLyv3IdM_acdFl7ovxUJPjg04-zQc0tr700Ljejri33NsFsq9CxdIgtL5G1_DszgRT3t6FdPRtBKGlUs-ZnnpeHzxB2su6_j-Ioyz7SAA1xGdA";
+    token2="eCPRXeKcQBOXIkZK_WAaMX:APA91bFDzKe9XrxKfsnHZgrVkuEXEBeXPfbX3Vq0lEwAjtkVjNIbMhVeySielMnUUZmL_G8aMKd8XrglxjLEpnL_voEwmxq_9q31NTR9_oYMd6t7gSWUlXs";
     # token3="cPuLbXpaT8OXj6BTU79y70:APA91bGZKSCm-kEGzZXZ4ddDTUgEZR-gsSHEbYDImi2Ot838evPwWElRTNGRdBGShP_7Ea2_Z3T_q5rytK1OchtINDfcTtMgtcyZIT0hGScTKuEMrhcYSdY";
     # FirebaseService.send_notification(token1, "New Order Created", "A new order has been created.") ## delay
-    # FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
+    FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
     # # bgTask.add_task(order_stock_created_listener)
     print("Order created, background task added")
     return{
@@ -175,6 +184,8 @@ def get_by_jenis(id: int,  session: SessionDBKafe):
 def get_media_service(session: SessionDBKafe) -> MediaService:
     return MediaService(session=session)
 
+from fastapi import Depends, HTTPException, UploadFile, File
+
 @router.put("/penerimaan/")
 async def penerimaan_belanja(
     session: SessionDBKafe,
@@ -182,8 +193,30 @@ async def penerimaan_belanja(
         InputPenerimaanBelanjaRequest.as_form
     ),
     files: list[UploadFile] = File(...),
-    mediaService: MediaService = Depends(get_media_service) 
+    mediaService: MediaService = Depends(get_media_service),
+    current_user: Member = Depends(get_current_user),
 ):
+
+    # ─────────────────────────────
+    # 🔐 ROLE CHECK
+    # ─────────────────────────────
+    user_divisi = current_user.Divisi.lower()
+
+    permissions = {
+        "admin": ["dapur", "bar", "spv"],
+        "spv": ["dapur", "bar", "spv"],
+        "dapur": ["dapur"],
+        "bar": ["bar"],
+    }
+
+    allowed = permissions.get(user_divisi, [])
+
+    if penerimaan.Jenis.lower() not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="Anda tidak memiliki akses untuk melakukan penerimaan ini"
+        )
+
    
     input_belanja = (
         session.query(Belanja)
@@ -194,38 +227,46 @@ async def penerimaan_belanja(
         .first()
     )
 
-    # jika data tidak ditemukan
     if input_belanja is None:
-        return {
-            "message": "Data tidak ditemukan"
-        }
+        return {"message": "Data tidak ditemukan"}
 
-    # update data
+    # ─────────────────────────────
+    # ✏️ UPDATE DATA
+    # ─────────────────────────────
     input_belanja.JmlhPenerima = penerimaan.JmlhPenerima
+    input_belanja.ID_Penerima = current_user.ID
 
-    # optional
-    # input_belanja.Checked = True
-    
-    
+    # ─────────────────────────────
+    # 📤 UPLOAD FILE
+    # ─────────────────────────────
     uploaded_files = await CafeFileService.massUpload(files)
 
-
-    # simpan perubahan
+    # ─────────────────────────────
+    # 💾 SAVE
+    # ─────────────────────────────
     session.commit()
     session.refresh(input_belanja)
-    print(f"Input Belanja ID after commit: {input_belanja.ID_Belanja}")
 
-    mediaService.createMany(uploaded_files,Belanja.subject_type(), input_belanja.ID_Belanja)
+    # ─────────────────────────────
+    # 🖼️ MEDIA SAVE
+    # ─────────────────────────────
+    mediaService.createMany(
+        uploaded_files,
+        Belanja.subject_type(),
+        input_belanja.ID_Belanja
+    )
 
+    # ─────────────────────────────
+    # 📦 RESPONSE
+    # ─────────────────────────────
     return {
         "message": "Data berhasil diupdate",
-        "data": 
-            input_belanja
-        
+        "data": input_belanja
+    
         }
 @router.put("/belanjaandetail/")
 def belanjaandetail(
-     request: belanjaan_detail_item_request.BelanjaanDetailItemRequest, session: SessionDBKafe,current_user: dict = Depends(get_current_user)
+     request: belanjaan_detail_item_request.BelanjaanDetailItemRequest, session: SessionDBKafe,current_user: Member = Depends(get_current_user)
 ):
 
     # cari data
@@ -245,6 +286,7 @@ def belanjaandetail(
     data.Price = request.harga
     data.Jmlh = request.qty
     data.ket = request.ket
+    data.ID_UserBelanja = current_user.ID
 
     # simpan
     session.add(data)
@@ -305,4 +347,3 @@ def get_by_jenis_jumlah(id: int,  session: SessionDBKafe,current_user: dict = De
     query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
     result_jenis = session.exec(query_jenis).all()
     return {"data": result_jenis}
-
