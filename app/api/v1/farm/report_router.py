@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from sqlalchemy import Integer, Subquery, func, literal, desc
+from sqlalchemy import Integer, Subquery, func, literal, desc, null
 from datetime import datetime
 from app.database import SessionDB1
 from app.model.farm.TempLangsirMkn import TempLangsirMkn
@@ -120,6 +120,33 @@ def telursisalayer(session: SessionDB1, date:str):
             }
         ]
     }
+@router.get("/harga/range")
+def harga_by_range(session: SessionDB1, start_date: str | None, end_date: str | None):
+    print(f"Received: start_date={start_date}, end_date={end_date}")
+
+    if start_date == "":
+        start_date = None
+    if end_date == "":
+        end_date = None
+
+    subquery_query = select(Harga.Jenis, func.max(Harga.Tgl).label("max_tgl"))
+
+    if start_date is not None:
+        subquery_query = subquery_query.where(Harga.Tgl >= start_date)
+    if end_date is not None:
+        subquery_query = subquery_query.where(Harga.Tgl <= end_date)
+
+    subquery = subquery_query.group_by(Harga.Jenis).subquery()
+
+    statement = (
+        select(Harga.Harga, Harga.Jenis, Harga.Tgl)
+        .join(subquery, (Harga.Jenis == subquery.c.Jenis) & (Harga.Tgl == subquery.c.max_tgl))
+        .order_by(Harga.Tgl.desc())
+    )
+
+    result = session.exec(statement).all()
+    print(f"Result count: {len(result)}")
+    return [{"Harga": r.Harga, "Jenis": r.Jenis, "Tgl": str(r.Tgl)} for r in result]
 @router.get("/harga/{date}")
 def harga(session: SessionDB1):
     subquery = (
@@ -130,19 +157,10 @@ def harga(session: SessionDB1):
     statement = (
         select(Harga.Harga, Harga.Jenis, Harga.Tgl)
         .join(subquery, (Harga.Jenis == subquery.c.Jenis) & (Harga.Tgl == subquery.c.max_tgl))
-    )
-    result = session.exec(statement).all()
-    return [{"Harga": r.Harga, "Jenis": r.Jenis, "Tgl": str(r.Tgl)} for r in result]
-@router.get("/range/")
-def harga_by_range(session: SessionDB1, start_date: str, end_date: str):
-    statement = (
-        select(Harga.Harga, Harga.Jenis, Harga.Tgl)
-        .where(Harga.Tgl >= start_date, Harga.Tgl <= end_date)
         .order_by(Harga.Tgl.desc())
     )
     result = session.exec(statement).all()
     return [{"Harga": r.Harga, "Jenis": r.Jenis, "Tgl": str(r.Tgl)} for r in result]
-
 @router.get("/{date}")
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     print("date", date)
