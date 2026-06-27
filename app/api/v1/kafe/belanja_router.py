@@ -46,7 +46,7 @@ def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: d
 @router.get("/{id}")
 def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     
-    query = select(Belanja).where(Belanja.ID == id)
+    query = select(Belanja).where(Belanja.ID == id).where(Belanja.Checked==0)
 
     result = session.exec(query).all()
     

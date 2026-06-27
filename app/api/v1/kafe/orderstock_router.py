@@ -35,7 +35,7 @@ def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: d
             }}
 @router.get("/{id}")
 def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    query = select(Orderstock).where(Orderstock.IDOrder == id)
+    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.Checked==0)
     result = session.exec(query).all()
     if result is None:
         return JSONResponse(content={"message": "belanja not found"}, status_code=404)
