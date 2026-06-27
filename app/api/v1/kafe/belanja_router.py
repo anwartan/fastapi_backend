@@ -125,10 +125,9 @@ def create(
     session.refresh(new_order)
 
     # token1  = "cW0fJxjrSyWCh0GfyR7bSS:APA91bFee7OaT9QHGJFDNOGh5elQ1N5yjt66krKTgUEWmvHGJ0ECp913gHidoSRpbs1Feu2ej4_sYM4aViYf5pUCPND3E5XMxN_i4wS_WR49M7uNA6AILiI";
-    token2="eCPRXeKcQBOXIkZK_WAaMX:APA91bFDzKe9XrxKfsnHZgrVkuEXEBeXPfbX3Vq0lEwAjtkVjNIbMhVeySielMnUUZmL_G8aMKd8XrglxjLEpnL_voEwmxq_9q31NTR9_oYMd6t7gSWUlXs";
-    # token3="cPuLbXpaT8OXj6BTU79y70:APA91bGZKSCm-kEGzZXZ4ddDTUgEZR-gsSHEbYDImi2Ot838evPwWElRTNGRdBGShP_7Ea2_Z3T_q5rytK1OchtINDfcTtMgtcyZIT0hGScTKuEMrhcYSdY";
+     # token3="cPuLbXpaT8OXj6BTU79y70:APA91bGZKSCm-kEGzZXZ4ddDTUgEZR-gsSHEbYDImi2Ot838evPwWElRTNGRdBGShP_7Ea2_Z3T_q5rytK1OchtINDfcTtMgtcyZIT0hGScTKuEMrhcYSdY";
     # FirebaseService.send_notification(token1, "New Order Created", "A new order has been created.") ## delay
-    FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
+    # FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
     # # bgTask.add_task(order_stock_created_listener)
     print("Order created, background task added")
     return{
@@ -192,33 +191,12 @@ async def penerimaan_belanja(
     penerimaan: InputPenerimaanBelanjaRequest = Depends(
         InputPenerimaanBelanjaRequest.as_form
     ),
-    files: list[UploadFile] = File(...),
-    mediaService: MediaService = Depends(get_media_service),
     current_user: Member = Depends(get_current_user),
+    files: list[UploadFile] = File(...),
+    mediaService: MediaService = Depends(get_media_service) 
 ):
-
-    # ─────────────────────────────
-    # 🔐 ROLE CHECK
-    # ─────────────────────────────
-    user_divisi = current_user.Divisi.lower()
-
-    permissions = {
-        "admin": ["dapur", "bar", "spv"],
-        "spv": ["dapur", "bar", "spv"],
-        "dapur": ["dapur"],
-        "bar": ["bar"],
-    }
-
-    allowed = permissions.get(user_divisi, [])
-
-    if penerimaan.Jenis.lower() not in allowed:
-        raise HTTPException(
-            status_code=403,
-            detail="Anda tidak memiliki akses untuk melakukan penerimaan ini"
-        )
-
    
-    input_belanja = (
+    input_Belanja = (
         session.query(Belanja)
         .filter(
             Belanja.ID == penerimaan.id,
@@ -227,42 +205,32 @@ async def penerimaan_belanja(
         .first()
     )
 
-    if input_belanja is None:
-        return {"message": "Data tidak ditemukan"}
+    if input_Belanja is None:
+        return {
+            "message": "Data tidak ditemukan"
+        }
 
-    # ─────────────────────────────
-    # ✏️ UPDATE DATA
-    # ─────────────────────────────
-    input_belanja.JmlhPenerima = penerimaan.JmlhPenerima
-    input_belanja.ID_Penerima = current_user.ID
+    # update data
+    input_Belanja.JmlhPenerima = penerimaan.JmlhPenerima,
+    input_Belanja.ID_Penerima=current_user.ID
 
-    # ─────────────────────────────
-    # 📤 UPLOAD FILE
-    # ─────────────────────────────
+    # optional
+    
+    
     uploaded_files = await CafeFileService.massUpload(files)
 
-    # ─────────────────────────────
-    # 💾 SAVE
-    # ─────────────────────────────
+
+    # simpan perubahan
     session.commit()
-    session.refresh(input_belanja)
+    session.refresh(input_Belanja)
+    print(f"Input Orderstock ID after commit: {input_Belanja.ID_Belanja}")
 
-    # ─────────────────────────────
-    # 🖼️ MEDIA SAVE
-    # ─────────────────────────────
-    mediaService.createMany(
-        uploaded_files,
-        Belanja.subject_type(),
-        input_belanja.ID_Belanja
-    )
+    mediaService.createMany(uploaded_files,Belanja.subject_type(), input_Belanja.ID_Belanja)
 
-    # ─────────────────────────────
-    # 📦 RESPONSE
-    # ─────────────────────────────
     return {
         "message": "Data berhasil diupdate",
-        "data": input_belanja
-    
+        "data": 
+            input_Belanja
         }
 @router.put("/belanjaandetail/")
 def belanjaandetail(

@@ -87,11 +87,10 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: M
             JmlhInp=0,
             unit=jenis_db.Unit,
             Divisi=current_user.Divisi,
-            JmlhPenerimaan=0,
             Inputer=current_user.ID,
             Checked=False,
             Ket=item.keterangan_jenis_stock,
-            ID_Penerima=0    
+            ID_Penerimaan=0  
               )
         session.add(order_stock)
     session.commit()

@@ -129,7 +129,7 @@ def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,curr
 
 @router.get("/{Category}")
 def get(session: SessionDBKafe,Category:str,limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
-    query = select(Bborder).limit(limit).offset(offset).where(Bborder.Category == Category).order_by(Bborder.IDOrder.desc())
+    query = select(Bborder).limit(limit).offset(offset).where(Bborder.Category == Category).order_by(Bborder.IDOrder.desc()).where(Bborder.Checked==0)
 
     results = session.exec(query).all()
     query_total = select(func.count(Orderstock.IDOrder))
@@ -156,6 +156,7 @@ def get_bborder(
                 Bborder.Category == category,
                 Orderstock.Divisi == divisi
             )
+            .where(Bborder.Checked==0)
             .distinct()
             .order_by(Bborder.IDOrder.desc())
             .limit(limit)
