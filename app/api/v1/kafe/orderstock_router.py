@@ -99,22 +99,26 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: M
         "data":new_order 
     }
 @router.delete("/{id}/{jenis}")
-def delete(id: int,jenis: str, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.Jenis == jenis)
+def delete(id: int,jenis: str, session: SessionDBKafe,current_user: Member = Depends(get_current_user)):
+    query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.Jenis == jenis).where(Orderstock.JmlhInp==0).where(Orderstock.Inputer==current_user.ID)
     result = session.exec(query).first()
     if not result:
-        raise HTTPException(status_code=404, detail="order stock not found")
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya pembuat order yang dapat menghapus data."
+        )
+    
     session.delete(result)
     session.commit()
     return {"message": "order stock deleted successfully"}
 @router.put("/")
 def update_orderstock(
-     request: orderStockItemRequest.OrderStockItemRequest, session: SessionDBKafe,current_user: dict = Depends(get_current_user)
+     request: orderStockItemRequest.OrderStockItemRequest, session: SessionDBKafe,current_user: Member = Depends(get_current_user)
 ):
 
     # cari data
     data = session.exec(
-        select(Orderstock).where(Orderstock.IDOrder == request.id, Orderstock.Jenis == request.jenis_stock)
+        select(Orderstock).where(Orderstock.IDOrder == request.id, Orderstock.Jenis == request.jenis_stock).where(Orderstock.JmlhInp==0).where(Orderstock.Inputer==current_user.ID)
     ).first()
     print("Model",data)
     print("Request",request)

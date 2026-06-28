@@ -56,17 +56,33 @@ def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_cur
         return {"data": result}
     
 @router.delete("/{id}/{jenis}")
-def delete(id: int,jenis: str, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    print("id",id)
-    print("jenis",jenis)
-    query = select(Belanja).where(Belanja.ID == id, Belanja.Jenis == jenis)
+def delete(
+    id: int,
+    jenis: str,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    query = (
+        select(Belanja)
+        .join(Bborder, Belanja.ID == Bborder.IDOrder) 
+        .where(Belanja.ID == id)
+        .where(Belanja.Jenis == jenis)
+        .where(Belanja.JmlhPenerima == 0)
+        .where(Bborder.Inputer == current_user.ID)
+    )
+
     result = session.exec(query).first()
-    print("qsdcxs",result)
+
     if not result:
-        raise HTTPException(status_code=404, detail="belanja not found")
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya pembuat order yang dapat menghapus data."
+        )
+
     session.delete(result)
     session.commit()
-    return {"message": "belanja deleted successfully"}
+
+    return {"message": "Belanja deleted successfully"}
 
 @router.post("/create")
 def create(
@@ -143,7 +159,11 @@ def update_belanja(
 
     # cari data
     data = session.exec(
-        select(Belanja).where(Belanja.ID == request.id, Belanja.Jenis == request.jenis_stock)
+        select(Belanja)        
+        .join(Bborder, Belanja.ID == Bborder.IDOrder) 
+        .where(Belanja.ID == request.id, Belanja.Jenis == request.jenis_stock)  
+        .where(Belanja.JmlhPenerima == 0)
+        .where(Bborder.Inputer == current_user.ID)
     ).first()
     print(data)
 

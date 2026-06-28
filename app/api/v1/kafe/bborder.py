@@ -161,7 +161,7 @@ def get_bborder(
             .limit(limit)
             .offset(offset)
         )
-    else:  # OB
+    else:  
         query = (
             select(Bborder)
             .join(Belanja, Belanja.ID == Bborder.IDOrder)
@@ -171,6 +171,7 @@ def get_bborder(
             )
             .distinct()
             .order_by(Bborder.IDOrder.desc())
+            .where(Bborder.Checked==0)
             .limit(limit)
             .offset(offset)
         )
