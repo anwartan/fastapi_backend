@@ -25,4 +25,5 @@ class Member(SQLModel, table=True):
     TokenAttemptOtp:int|None
     TokenExpiredDate:date|None
     Device_id:str|None
+    TokenNotifikasi:str
     TokenBiometric : Optional[str]

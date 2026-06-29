@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, produksiluar_router, report_router
-from app.api.v1.kafe import price_router
+from app.api.v1.kafe import biometric_router, notifikasi_router, price_router
 from app.database import test_database_connection
 import logging
 from fastapi import FastAPI
@@ -15,6 +15,9 @@ from app.api.v1.kafe.bborder import router as bborder_router
 from app.api.v1.kafe.image_router import router as image_router
 from app.api.v1.kafe.auth_router import router as auth_router
 from app.api.v1.kafe.price_router import router as price_router
+from app.api.v1.kafe.biometric_router import router as biometric_router
+from app.api.v1.kafe.notifikasi_router import router as notifikasi_router
+
 from app.database import test_database_connection
 import logging
 
@@ -53,7 +56,8 @@ app.include_router(bborder_router, prefix=base_kafe_url+"/bborder", tags=["BBOrd
 app.include_router(auth_router, prefix=base_kafe_url+"/auth", tags=["Auth"])
 app.include_router(image_router, prefix=base_kafe_url+"/image", tags=["image"])
 app.include_router(price_router, prefix=base_kafe_url+"/pricedetail", tags=["price"])
-
+app.include_router(biometric_router,prefix=base_kafe_url+"/biometric",tags=["biometric"])
+app.include_router(notifikasi_router,prefix=base_kafe_url+"/notifikasi",tags=["notifikasi"])
 base_farm_url = base_url + "/farm"
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
 app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=["Ayamklr"])

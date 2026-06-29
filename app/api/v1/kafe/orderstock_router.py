@@ -35,7 +35,7 @@ def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: d
             }}
 @router.get("/{id}")
 def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    query = select(Orderstock).where(Orderstock.IDOrder == id)
+    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.Checked==0)
     result = session.exec(query).all()
     if result is None:
         return JSONResponse(content={"message": "belanja not found"}, status_code=404)
@@ -87,11 +87,10 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: M
             JmlhInp=0,
             unit=jenis_db.Unit,
             Divisi=current_user.Divisi,
-            JmlhPenerimaan=0,
             Inputer=current_user.ID,
             Checked=False,
             Ket=item.keterangan_jenis_stock,
-            ID_Penerima=0    
+            ID_Penerimaan=0  
               )
         session.add(order_stock)
     session.commit()
@@ -100,22 +99,26 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: M
         "data":new_order 
     }
 @router.delete("/{id}/{jenis}")
-def delete(id: int,jenis: str, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.Jenis == jenis)
+def delete(id: int,jenis: str, session: SessionDBKafe,current_user: Member = Depends(get_current_user)):
+    query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.Jenis == jenis).where(Orderstock.JmlhInp==0).where(Orderstock.Inputer==current_user.ID)
     result = session.exec(query).first()
     if not result:
-        raise HTTPException(status_code=404, detail="order stock not found")
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya pembuat order yang dapat menghapus data."
+        )
+    
     session.delete(result)
     session.commit()
     return {"message": "order stock deleted successfully"}
 @router.put("/")
 def update_orderstock(
-     request: orderStockItemRequest.OrderStockItemRequest, session: SessionDBKafe,current_user: dict = Depends(get_current_user)
+     request: orderStockItemRequest.OrderStockItemRequest, session: SessionDBKafe,current_user: Member = Depends(get_current_user)
 ):
 
     # cari data
     data = session.exec(
-        select(Orderstock).where(Orderstock.IDOrder == request.id, Orderstock.Jenis == request.jenis_stock)
+        select(Orderstock).where(Orderstock.IDOrder == request.id, Orderstock.Jenis == request.jenis_stock).where(Orderstock.JmlhInp==0).where(Orderstock.Inputer==current_user.ID)
     ).first()
     print("Model",data)
     print("Request",request)
