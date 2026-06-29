@@ -12,7 +12,7 @@ from sqlmodel import select
 router = APIRouter()
 @router.get("/option")
 def getOption(session:SessionDB1):
-    getkandang_qury= select(Ayam.Kandang, Ayam.Jenisayam)
+    getkandang_qury= select(Ayam.Kandang, Ayam.Jenisayam).order_by(Ayam.Kandang.desc())
     data_kandang = session.exec(getkandang_qury).all()
     
     mapped_data_kandang = []
@@ -24,7 +24,7 @@ def getOption(session:SessionDB1):
     return {
         "data": mapped_data_kandang
     }
-@router.post("/")
+@router.post("/make")
 def create(request: Createpickuptelurrequest, session:SessionDB1):
     now = date.today().strftime("%Y-%m-%d")
     for item in request.data:

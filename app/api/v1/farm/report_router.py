@@ -1,6 +1,10 @@
+from certifi import where
 from fastapi import APIRouter
+from requests import session
 from sqlalchemy import Integer, Subquery, func, literal, desc, null
 from datetime import datetime
+
+from sqlalchemy.orm import sessionmaker
 from app.database import SessionDB1
 from app.model.farm.TempLangsirMkn import TempLangsirMkn
 from app.model.farm.TempJmlhAyam import TempJmlhAyam
@@ -19,6 +23,26 @@ from sqlmodel import select, func, desc
 from app.model.farm.telursisa import Telursisa
 from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
+@router.get("/sisaproluar/{date}")
+def sisaproluar(session: SessionDB1, date:str):
+    layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
+    data__layer = session.exec(layer_statement).first()
+    arab_statement = select(Telursisaarab.JmlhLap, Telursisaarab.JmlhMlm).where(Telursisaarab.Tgl == date)
+    data__arab = session.exec(arab_statement).first()
+    return {
+        "data": [
+            {
+                "tipe":"Layer",
+                "lap": data__layer.JmlhLap,
+                "mlm": data__layer.JmlhMlm,
+            },
+            {
+                "tipe":"arab",
+                "lap": data__arab.JmlhLap,
+                "mlm": data__arab.JmlhMlm,
+            }
+        ]
+    }
 @router.get("/langsirmkn/{date}")
 def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str = None):
     statement = select(TempLangsirMkn.Dist, TempLangsirMkn.Kandang, TempLangsirMkn.JenisMkn, TempLangsirMkn.Goni, TempLangsirMkn.Kg, TempLangsirMkn.Input).where(TempLangsirMkn.Tgl == date)
@@ -147,6 +171,11 @@ def harga_by_range(session: SessionDB1, start_date: str | None, end_date: str | 
     result = session.exec(statement).all()
     print(f"Result count: {len(result)}")
     return [{"Harga": r.Harga, "Jenis": r.Jenis, "Tgl": str(r.Tgl)} for r in result]
+@router.get("/hargainput/{date}")
+def inputharga(session: SessionDB1, date:str):
+    Subquery = select(Harga.Jenis).where(Harga.Tgl == date)
+    result = session.exec(Subquery).all()
+    return result
 @router.get("/harga/{date}")
 def harga(session: SessionDB1):
     subquery = (
