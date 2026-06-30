@@ -74,7 +74,7 @@ class AuthService:
         is_valid=self.otp_service.verify_otp(code, username)
         if not is_valid:
              raise HTTPException(status_code=400, detail="invalid or expired OTP")
-        member_statement=select(Member).where(Member.Username==username).where(Member.Email==email)
+        member_statement=select(Member).where(Member.Username==username)
         members=self.session.exec(member_statement).first()
         if not members:
               raise HTTPException(status_code=404, detail="Member is not found")
