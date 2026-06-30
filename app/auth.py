@@ -11,7 +11,7 @@ from app.database import SessionDBKafeLogin, get_session_kafe_login
 
 SECRET_KEY = "your_secret_key_here"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 36500
+ACCESS_TOKEN_EXPIRE_DAYS = 1
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
