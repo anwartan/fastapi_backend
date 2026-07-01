@@ -1,4 +1,6 @@
 
+from datetime import timedelta
+
 from sqlmodel import select
 
 from fastapi import APIRouter, Depends,HTTPException 
@@ -40,7 +42,7 @@ def user_login(formdata: LoginRequest, session: SessionDBKafeLogin):
         return {"message": "Invalid username or password"}
     if user.Active != 1:
         raise HTTPException(status_code=403, detail="User is not active")
-    access_token = create_access_token(data={"sub": user.Username}, 
+    access_token = create_access_token(data={"sub": user.Username},expires_delta=timedelta(days=1), 
     )
     return {"message": "Login endpoint", "access_token": access_token, "token_type": "bearer"}
 @router.get("/user/me")

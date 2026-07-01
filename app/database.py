@@ -18,17 +18,27 @@ mysql_url_kafe_login = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_ho
 engine_db = create_engine(mysql_url , echo=True, pool_pre_ping=True, pool_recycle=3600)
 engine_db_kafe = create_engine(mysql_url_kafe, echo=True, pool_pre_ping=True, pool_recycle=3600)
 engine_db_kafe_login = create_engine(mysql_url_kafe_login, echo=True, pool_pre_ping=True, pool_recycle=3600)
-def get_session():
-    with Session(engine_db) as session:
-        yield session
 
+def get_session():
+    session = Session(engine_db)
+    try:
+        yield session
+    finally:
+        session.close()
 
 def get_session_kafe():
-    with Session(engine_db_kafe) as session:
+   
+    session = Session(engine_db_kafe)
+    try:
         yield session
+    finally:
+        session.close()
 def get_session_kafe_login():
-    with Session(engine_db_kafe_login) as session:
+    session = Session(engine_db_kafe_login)
+    try:
         yield session
+    finally:
+        session.close()
 
 
 def test_database_connection():
