@@ -21,6 +21,52 @@ from sqlmodel import select, func, desc
 from app.model.farm.telursisa import Telursisa
 from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
+@router.get("/hargaluar")
+def hargaluar(session: SessionDB1):
+    now = datetime.now().date()
+    statement_new = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").order_by(Harga.Tgl.desc())
+    new_price_telur = session.exec(statement_new).first()
+    statement_old = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").where(Harga.Tgl < now).order_by(Harga.Tgl.desc())
+    old_price_telur = session.exec(statement_old).first()
+
+    arab_statement_new = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").order_by(Harga.Tgl.desc())
+    new_price_telur_arab = session.exec(arab_statement_new).first()
+    arab_statement_old = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").where(Harga.Tgl < now).order_by(Harga.Tgl.desc())
+    old_price_telur_arab = session.exec(arab_statement_old).first()
+
+    new_price_telur_value = 0
+    new_price_telur_arab_value = 0
+    old_price_telur_value_arab = 0
+    old_price_telur_value = 0
+    if (new_price_telur is not None):
+        new_price_telur_value = new_price_telur.Harga
+    if (new_price_telur_arab is not None):
+        new_price_telur_arab_value = new_price_telur_arab.Harga
+    if (old_price_telur is not None):
+        old_price_telur_value = old_price_telur.Harga
+    if (old_price_telur_arab is not None):
+        old_price_telur_value_arab = old_price_telur_arab.Harga
+
+
+    return {
+        "data": {
+            "layer" : {
+                "harga_lama" : old_price_telur_value,
+                "harga_baru" : new_price_telur_value,
+                "jenis": "Telur",
+                "tgl": new_price_telur.Tgl,
+                "tgl_lama": old_price_telur.Tgl
+            },
+            "arab" : {
+                "harga_lama" : old_price_telur_value_arab,
+                "harga_baru" : new_price_telur_arab_value,
+                "jenis": "Telur Arab",
+                "tgl": new_price_telur_arab.Tgl,
+                "tgl_lama": old_price_telur_arab.Tgl
+            }
+        }
+    }
+ 
 @router.get("/sisaproluar/{date}")
 def sisaproluar(session: SessionDB1, date:str):
     layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
@@ -188,27 +234,6 @@ def inputharga(session: SessionDB1, date:str):
     Subquery = select(Harga.Jenis).where(Harga.Tgl == date)
     result = session.exec(Subquery).all()
     return result
-@router.get("/hargaluar")
-def hargaluar(session: SessionDB1):
-    statement = select(Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").order_by(Harga.Tgl.desc())
-    result = session.exec(statement).first()
-    subquery = select(Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").order_by(Harga.Tgl.desc())
-    result_arab = session.exec(subquery).first()
-    data = []
-    if result:
-        data.append({
-            "jenis": result.Jenis,
-            "harga": result.Harga,
-        })
-    if result_arab:
-        data.append({
-            "jenis": result_arab.Jenis,
-            "harga": result_arab.Harga,
-        })          
-    return [
-    {"Jenis": result.Jenis, "Harga": result.Harga},
-    {"Jenis": result_arab.Jenis, "Harga": result_arab.Harga},
-]
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     print("date", date)
     print("filter", filter)
