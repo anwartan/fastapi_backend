@@ -1,9 +1,7 @@
-from certifi import where
 from fastapi import APIRouter
 from requests import session
 from sqlalchemy import Integer, Subquery, func, literal, desc, null
 from datetime import datetime
-
 from sqlalchemy.orm import sessionmaker
 from app.database import SessionDB1
 from app.model.farm.TempLangsirMkn import TempLangsirMkn
@@ -27,19 +25,33 @@ router = APIRouter()
 def sisaproluar(session: SessionDB1, date:str):
     layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
     data__layer = session.exec(layer_statement).first()
+    jmlh_lap_layer = 0 
+    jmlh_mlm_layer = 0
+    if data__layer is not None:
+        jmlh_lap_layer = data__layer.JmlhLap
+        jmlh_mlm_layer = data__layer.JmlhMlm
+    
     arab_statement = select(Telursisaarab.JmlhLap, Telursisaarab.JmlhMlm).where(Telursisaarab.Tgl == date)
     data__arab = session.exec(arab_statement).first()
+    jmlh_lap_arab = 0
+    jmlh_mlm_arab = 0
+    if data__arab is not None:
+        jmlh_lap_arab = data__arab.JmlhLap
+        jmlh_mlm_arab = data__arab.JmlhMlm
+
+      
+
     return {
         "data": [
             {
                 "tipe":"Layer",
-                "lap": data__layer.JmlhLap,
-                "mlm": data__layer.JmlhMlm,
+                "lap": jmlh_lap_layer,
+                "mlm": jmlh_mlm_layer,
             },
             {
                 "tipe":"arab",
-                "lap": data__arab.JmlhLap,
-                "mlm": data__arab.JmlhMlm,
+                "lap": jmlh_lap_arab,
+                "mlm": jmlh_mlm_arab,
             }
         ]
     }
@@ -176,21 +188,27 @@ def inputharga(session: SessionDB1, date:str):
     Subquery = select(Harga.Jenis).where(Harga.Tgl == date)
     result = session.exec(Subquery).all()
     return result
-@router.get("/harga/{date}")
-def harga(session: SessionDB1):
-    subquery = (
-        select(Harga.Jenis, func.max(Harga.Tgl).label("max_tgl"))
-        .group_by(Harga.Jenis)
-        .subquery()
-    )
-    statement = (
-        select(Harga.Harga, Harga.Jenis, Harga.Tgl)
-        .join(subquery, (Harga.Jenis == subquery.c.Jenis) & (Harga.Tgl == subquery.c.max_tgl))
-        .order_by(Harga.Tgl.desc())
-    )
-    result = session.exec(statement).all()
-    return [{"Harga": r.Harga, "Jenis": r.Jenis, "Tgl": str(r.Tgl)} for r in result]
-@router.get("/{date}")
+@router.get("/hargaluar")
+def hargaluar(session: SessionDB1):
+    statement = select(Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").order_by(Harga.Tgl.desc())
+    result = session.exec(statement).first()
+    subquery = select(Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").order_by(Harga.Tgl.desc())
+    result_arab = session.exec(subquery).first()
+    data = []
+    if result:
+        data.append({
+            "jenis": result.Jenis,
+            "harga": result.Harga,
+        })
+    if result_arab:
+        data.append({
+            "jenis": result_arab.Jenis,
+            "harga": result_arab.Harga,
+        })          
+    return [
+    {"Jenis": result.Jenis, "Harga": result.Harga},
+    {"Jenis": result_arab.Jenis, "Harga": result_arab.Harga},
+]
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     print("date", date)
     print("filter", filter)
