@@ -10,7 +10,7 @@ from app.request.notifikasiRequest import NotifikasiRequuest
 
 
 router = APIRouter()
-@router.put("/")
+@router.post("/")
 def notification(
     session:SessionDBKafeLogin,
     req:NotifikasiRequuest,

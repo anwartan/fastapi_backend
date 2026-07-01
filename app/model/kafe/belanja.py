@@ -6,10 +6,10 @@ class Belanja(SQLModel, table=True):
     __tablename__ = "Belanja" # type: ignore
     ID: int = Field(default=None, primary_key=True)
     Jenis: str=Field(default=None,primary_key=True)
-    JmlhOrder: int=Field(default=None)
-    JmlhPenerima: int=Field(default=None)
+    JmlhOrder: float=Field(default=None)
+    JmlhPenerima: float=Field(default=None)
     ID_Penerima: int=Field(default=None)
-    Jmlh: int=Field(default=None)
+    Jmlh: float=Field(default=None)
     ID_Belanja: int=Field(default=None)
     Unit: str=Field(default=None)
     Price: float=Field(default=None)

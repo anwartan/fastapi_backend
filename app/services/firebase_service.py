@@ -1,3 +1,4 @@
+
 import firebase_admin
 from firebase_admin import credentials, messaging
 
@@ -39,8 +40,21 @@ class FirebaseService:
         )
         response = messaging.send_multicast(message)
         return response
-
+    
     @staticmethod
-    def subscribe_to_topic(token: str, topic: str):
-        response = messaging.subscribe_to_topic([token], topic)
-        return response
+    def send_to_topic( topic: str, title: str, body: str, data: dict |None = None):
+        message = messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            topic=topic,
+            data=data,
+            android=messaging.AndroidConfig(
+                priority="high",
+            )
+        )
+        messaging.send(message)
+    # @staticmethod
+    # def subscribe_to_topic(token: str, topic: str):
+    #     response = messaging.subscribe_to_topic([token], topic)
+    #     return response
+
+

@@ -29,6 +29,23 @@ def get_all(
     return {
         "data": results
     }   
+@router.get("/getallchecked")
+def get_all_checked(
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+ 
+    query = (
+        select(Bborder)
+        .where(Bborder.Checked == 1)
+        .order_by(Bborder.IDOrder.desc())
+    )
+
+    results = session.exec(query).all()
+
+    return {
+        "data": results
+    }  
 @router.get("/")
 def get_bborder(session: Session = Depends(get_session),current_user: dict = Depends(get_current_user)):
     try:

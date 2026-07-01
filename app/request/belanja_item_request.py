@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 class BelanjaItemRequest(BaseModel):
     id: int|None=None
     jenis_stock: str
-    qty: int
+    qty: float
     @field_validator('qty')
     def validate_qty(cls, value):
         if value <= 0:
