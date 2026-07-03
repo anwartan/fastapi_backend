@@ -234,6 +234,7 @@ def inputharga(session: SessionDB1, date:str):
     Subquery = select(Harga.Jenis).where(Harga.Tgl == date)
     result = session.exec(Subquery).all()
     return result
+@router.get("/{date}")
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
     print("date", date)
     print("filter", filter)
