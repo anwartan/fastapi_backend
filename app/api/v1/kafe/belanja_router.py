@@ -15,6 +15,7 @@ from datetime import datetime
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 from app.request.penerimaan_belanja_request import InputPenerimaanBelanjaRequest
+from app.services import firebase_service
 from app.services.firebase_service import FirebaseService
 from app.services.cafe_file_service import CafeFileService
 from app.services.media_service import MediaService
@@ -145,7 +146,11 @@ def create(
     # FirebaseService.send_notification(token1, "New Order Created", "A new order has been created.") ## delay
     # FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
     # # bgTask.add_task(order_stock_created_listener)
-    print("Order created, background task added")
+    message = f"{current_user.Nama} membuat order baru."
+    FirebaseService.send_to_topic("order_belanja_notification", "Order Belanja Baru", message, {
+        "type":"order_belanja",
+        "id": str(new_order.IDOrder),
+    })
     return{
         "data":new_order 
     }
@@ -175,7 +180,6 @@ def update_belanja(
         )
 
     # update field
-    data.ket = request.keterangan_jenis_stock
     data.Jmlh = request.qty
 
     # simpan

@@ -7,8 +7,8 @@ class Orderstock(SQLModel, table=True):
     IDOrder: int = Field(default=None, primary_key=True)
     Tgl: str
     Jenis: str = Field(default=None, primary_key=True)
-    Jmlh: int
-    JmlhInp: int
+    Jmlh: float
+    JmlhInp: float
     unit: str
     Divisi: str
     Inputer: int
