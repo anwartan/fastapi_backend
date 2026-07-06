@@ -1,6 +1,6 @@
 import select
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from app.api.v1.kafe.belanja_router import get_media_service
 from app.auth import get_current_user
@@ -17,6 +17,7 @@ from app.model.kafe.orderstock import Orderstock
 from app.request import orderStockItemRequest
 from app.request.penerimaan_orderstock_request import InputPenerimaanOrderstockRequest
 from app.services.cafe_file_service import CafeFileService
+from app.services.firebase_service import FirebaseService
 from app.services.media_service import MediaService
 router = APIRouter()
 
@@ -51,7 +52,7 @@ def get_latest_id(session: SessionDBKafe,current_user: dict = Depends(get_curren
 
 
 @router.post("/create")
-def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: Member = Depends(get_current_user)):
+def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: BackgroundTasks,current_user: Member = Depends(get_current_user)):
     new_id = get_latest_id(session,current_user) + 1
     date=datetime.strptime(order.tgl, "%Y-%m-%d").date()    
     new_order = Bborder(
@@ -95,9 +96,17 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,current_user: M
         session.add(order_stock)
     session.commit()
     session.refresh(new_order)
+    message = f"{current_user.Nama} membuat order baru."
+    bgTask.add_task(on_create_order_stock, message, new_order)
     return{
         "data":new_order 
     }
+
+def on_create_order_stock(message: str, new_order: Bborder):
+    FirebaseService.send_to_topic("order_stock_notification", "Order Stock Baru", message, {
+        "type":"order_stock",
+        "id": str(new_order.IDOrder),
+    })
 @router.delete("/{id}/{jenis}")
 def delete(id: int,jenis: str, session: SessionDBKafe,current_user: Member = Depends(get_current_user)):
     query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.Jenis == jenis).where(Orderstock.JmlhInp==0).where(Orderstock.Inputer==current_user.ID)
