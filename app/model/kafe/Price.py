@@ -3,5 +3,5 @@ from sqlalchemy import Column, Integer
 
 class Price(SQLModel, table=True):
     __tablename__ = "price"
-    Jenis: str
+    Jenis: str=Field(default=None,primary_key=True)
     Price: float

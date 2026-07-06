@@ -169,7 +169,7 @@ async def penerimaan_orderstock(
         }
 
     # update data
-    input_orderstock.JmlhInp = penerimaan.JmlhPenerimaan,
+    input_orderstock.JmlhInp = penerimaan.JmlhPenerimaan
     input_orderstock.ID_Penerimaan=current_user.ID
 
     # optional
@@ -193,7 +193,7 @@ async def penerimaan_orderstock(
 @router.get("/{id}/jenis")
 def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(get_current_user) ):
    
-    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.JmlhInp == 0)
+    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.JmlhInp == 0.0).where(Orderstock.JmlhInp==0)
     results = session.exec(query).all()
     result_mapped = []
     for result in results:

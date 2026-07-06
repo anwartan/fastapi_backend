@@ -1,9 +1,11 @@
+from datetime import date
 import select
 
 from fastapi import APIRouter, Depends, HTTPException
 from app.auth import get_current_user
-from app.database import SessionDBKafe, get_session
+from app.database import SessionDBKafe, SessionDBKafeLogin, get_session
 from sqlmodel import Session, select,func
+from app.model.kafe import bboreder
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.member import Member
 from app.model.kafe.orderstock import Orderstock
@@ -112,9 +114,10 @@ def pengecekaan(
 
   
     data.Checked = 1  
-    if data1:
-        data1.Checked = 1
-        session.add(data1)
+    
+    data1.Checked = 1
+    data1.Total=req.total
+    session.add(data1)
     session.add(data)
     session.commit()
     session.refresh(data)
@@ -123,6 +126,21 @@ def pengecekaan(
         "message": "Berhasil update",
         "data": data
     }
+
+@router.get("/{tanggal}/tanggal/checked")
+def get_bborder_by_tanggal(
+    tanggal: date,
+    session: SessionDBKafe,
+    current_user: dict = Depends(get_current_user)
+):
+    query = (
+        select(Bborder)
+        .where(Bborder.Tgl == tanggal)
+        .where(Bborder.Checked == 1)
+        .order_by(Bborder.IDOrder.desc())
+    )
+
+    return {"data": session.exec(query).all()}
 
 @router.get("/{Category}/{Tanggal}")
 def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,current_user: dict = Depends(get_current_user)):
@@ -144,63 +162,161 @@ def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,curr
         return {"message": "Data tidak ditemukan"}
     return {"data": results}
 
+
 @router.get("/{Category}")
-def get(session: SessionDBKafe,Category:str,limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
-    query = select(Bborder).limit(limit).offset(offset).where(Bborder.Category == Category).where(Bborder.Checked==0).order_by(Bborder.IDOrder.desc())
-    results = session.exec(query).all()
-    query_total = select(func.count(Orderstock.IDOrder))
-    total = session.exec(query_total).all()
-    return {"data": results,
-            "paging": {
-                "limit": limit,
-                "offset": offset,
-                "total": total
-            }}
-@router.get("/{category}/{divisi}/divisi")
-def get_bborder(
+def get(
     session: SessionDBKafe,
-    category: str,
-    divisi: str,
+    session_login: SessionDBKafeLogin,
+    Category: str,
     limit: int = 10,
     offset: int = 0,
+    current_user: dict = Depends(get_current_user),
 ):
-    if category.upper() == "OS":
+    if Category.upper() == "OS":
         query = (
-            select(Bborder)
-            .join(Orderstock, Orderstock.IDOrder == Bborder.IDOrder)
+            select(Bborder, Orderstock.IDOrder)
+            .join(Orderstock, Orderstock.IDOrder == Bborder.IDOrder)   
+            .distinct(Bborder.IDOrder)            
             .where(
-                Bborder.Category == category,
-                Orderstock.Divisi == divisi
+                Bborder.Category == Category,
+                Bborder.Checked == 0,
             )
-            .where(Bborder.Checked==0)
-            .distinct()
             .order_by(Bborder.IDOrder.desc())
             .limit(limit)
             .offset(offset)
         )
-    else:  
+    else:
         query = (
-            select(Bborder)
-            .join(Belanja, Belanja.ID == Bborder.IDOrder)
+            select(Bborder, Belanja.ID)
+            .join(Belanja, Belanja.ID == Bborder.IDOrder)   
+            .distinct(Bborder.IDOrder)
+         
             .where(
-                Bborder.Category == category,
-                Belanja.Divisi == divisi
+                Bborder.Category == Category,
+                Bborder.Checked == 0,
             )
-            .distinct()
             .order_by(Bborder.IDOrder.desc())
-            .where(Bborder.Checked==0)
             .limit(limit)
             .offset(offset)
         )
 
-    result = session.exec(query).all()
-    return result
+    results = session.exec(query).all()
+
+    # Ambil semua ID Inputer
+    inputer_ids = list({bb.Inputer for bb, _ in results if bb.Inputer})
+
+    # Ambil Username dari database Login
+    member_map = {}
+    if inputer_ids:
+        members = session_login.exec(
+            select(Member).where(Member.ID.in_(inputer_ids))
+        ).all()
+
+        member_map = {
+            member.ID: member.Username
+            for member in members
+        }
+
+    data = []
+    for bb, divisi in results:
+        item = bb.model_dump()
+        item["Divisi"] = divisi
+        item["Inputer"] = member_map.get(bb.Inputer, str(bb.Inputer))
+        data.append(item)
+
+    total = session.exec(
+        select(func.count(Bborder.IDOrder)).where(
+            Bborder.Category == Category,
+            Bborder.Checked == 0,
+        )
+    ).one()
+
+    return {
+        "data": data,
+        "paging": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+        },
+    }
+@router.get("/{category}/{divisi}/divisi")
+def get_bborder(
+    session: SessionDBKafe,
+    session_login: SessionDBKafeLogin,
+    category: str,
+    divisi: str,
+    limit: int = 10,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user),
+):
+    if category.upper() == "OS":
+        query = (
+            select(Bborder, Orderstock.Divisi)
+            .join(Orderstock, Orderstock.IDOrder == Bborder.IDOrder)
+            .where(
+                Bborder.Category == category,
+                Orderstock.Divisi == divisi,
+                Bborder.Checked == 0,
+            )
+            .distinct()
+            .order_by(Bborder.IDOrder.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    else:
+        query = (
+            select(Bborder, Belanja.Divisi)
+            .join(Belanja, Belanja.ID == Bborder.IDOrder)
+            .where(
+                Bborder.Category == category,
+                Belanja.Divisi == divisi,
+                Bborder.Checked == 0,
+            )
+            .distinct()
+            .order_by(Bborder.IDOrder.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+
+    results = session.exec(query).all()
+
+    # Ambil semua ID Inputer
+    inputer_ids = list({bb.Inputer for bb, _ in results if bb.Inputer})
+
+    # Ambil Username dari database Login
+    member_map = {}
+    if inputer_ids:
+        members = session_login.exec(
+            select(Member).where(Member.ID.in_(inputer_ids))
+        ).all()
+
+        member_map = {
+            member.ID: member.Username   # ganti menjadi member.Nama jika ingin nama
+            for member in members
+        }
+
+    data = []
+
+    for bb, divisi_db in results:
+        item = bb.model_dump()
+        item["Divisi"] = divisi_db
+        item["Inputer"] = member_map.get(bb.Inputer, str(bb.Inputer))
+        data.append(item)
+
+    return {
+        "data": data,
+        "paging": {
+            "limit": limit,
+            "offset": offset,
+            "total": len(data)
+        }
+    }
 @router.get("/{id}/{category}/pengecekaan")
 def get_item_by_category_and_id(
     id: int,
     category: str,
     session: SessionDBKafe,
-    current_user: dict = Depends(get_current_user)
+    current_user: Member = Depends(get_current_user)
 ):
     if category == "OB":
         query = select(Belanja).where(

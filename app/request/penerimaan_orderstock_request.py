@@ -4,14 +4,14 @@ from pydantic import BaseModel
 class InputPenerimaanOrderstockRequest(BaseModel):
     id: int
     Jenis: str
-    JmlhPenerimaan: int
+    JmlhPenerimaan: float
 
     @classmethod
     def as_form(
         cls,
         id: int = Form(...),
         Jenis: str = Form(...),
-        JmlhPenerimaan: int = Form(...),
+        JmlhPenerimaan: float = Form(...),
     ):
         return cls(
             id=id,
