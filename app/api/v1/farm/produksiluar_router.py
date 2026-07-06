@@ -1,4 +1,4 @@
-from re import A
+
 from unittest import result
 
 from fastapi import APIRouter

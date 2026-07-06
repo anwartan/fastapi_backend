@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.farm import ayamklr_router, ayammini_router, langsir_router, pickuptelur_router, produksiluar_router, report_router
-from app.api.v1.kafe import  biometric_router, notifikasi_router, price_router
+
+from app.api.v1.farm import ayamklr_router, ayammini_router, inputprice_router, langsir_router, pickuptelur_router, produksiluar_router, report_router
+from app.api.v1.kafe import biometric_router, notifikasi_router, price_router
 from app.database import test_database_connection
 import logging
 from fastapi import FastAPI
@@ -67,6 +68,7 @@ app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=
 app.include_router(report_router.router, prefix=base_farm_url+"/report", tags=["Report"])
 app.include_router(pickuptelur_router.router, prefix=base_farm_url+"/pickuptelur", tags=["Pickuptelur"])
 app.include_router(produksiluar_router.router, prefix=base_farm_url+"/produksiluar", tags=["Produksiluar"])
+app.include_router(inputprice_router.router, prefix=base_farm_url+"/inputprice", tags=["Inputprice"])
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logging.error(f"Terjadi kesalahan: {exc}")

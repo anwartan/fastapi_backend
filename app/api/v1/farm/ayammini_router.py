@@ -12,6 +12,8 @@ router = APIRouter()
 
 @router.post("/")
 def create(ayammini: Ayammini, session:SessionDB1):
+
+    
     return {"message": "Ayammini created success"}
 @router.get("/")
 def get(session:SessionDB1, limit: int = 10, offset: int = 0):
