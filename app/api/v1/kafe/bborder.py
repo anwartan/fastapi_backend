@@ -335,3 +335,40 @@ def get_item_by_category_and_id(
     return {"data": total}
 
 
+@router.get("/{id}/{category}/RecapanPengecekaan/recap")
+def get_item_recap_by_category_and_id(
+    id: int,
+    category: str,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    if category == "OB":
+        data = session.exec(
+            select(Belanja).where(
+                Belanja.ID == id,
+                Belanja.Checked != False
+            )
+        ).all()
+
+    elif category == "OS":
+        data = session.exec(
+            select(Orderstock).where(
+                Orderstock.IDOrder == id,
+                Orderstock.Checked != False
+            )
+        ).all()
+
+    else:
+        return {
+            "total": 0,
+            "data": []
+        }
+
+    bborder = session.exec(
+        select(Bborder).where(Bborder.IDOrder == id)
+    ).first()
+
+    return {
+        "total": bborder.Total if bborder else 0,
+        "data": data
+    }
