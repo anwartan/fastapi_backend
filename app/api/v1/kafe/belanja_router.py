@@ -35,16 +35,15 @@ def get_by_ids(session: SessionDBKafe, id: int,):
     return result
 
 @router.get("/")
-def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
+def get(session: SessionDBKafe, current_user: dict = Depends(get_current_user)):
     
-    query = select(Belanja).limit(limit).offset(offset)
+    query = select(Belanja)
     results = session.exec(query).all()
     query_total = select(func.count(Belanja.ID))
     total = session.exec(query_total).all()
     return {"data": results,
             "paging": {
-                "limit": limit,
-                "offset": offset,
+                
                 "total": total
             }}
 @router.get("/{id}")

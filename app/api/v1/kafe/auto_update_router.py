@@ -10,7 +10,7 @@ from app.model.kafe.Config import Config
 
 
 router=APIRouter()
-APK_DIR=Path(__file__).resolve().parent.parent.parent/"apk"
+APK_DIR=Path(__file__).resolve().parent.parent.parent.parent/"apk"
 APK_FILENAME="coffeeday.apk"
 @router.get("/app_version")
 async def get_app_version(request:Request,session:SessionDBKafe):
@@ -42,6 +42,7 @@ async def get_app_version(request:Request,session:SessionDBKafe):
             "force_update":False,
         }
     }
+
 @router.get("/download",name="download_apk")
 async def download_apk():
     apk_path=APK_DIR/APK_FILENAME

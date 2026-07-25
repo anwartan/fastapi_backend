@@ -23,15 +23,14 @@ router = APIRouter()
 
     
 @router.get("/")
-def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
-    query = select(Orderstock).limit(limit).offset(offset)
+def get(session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Orderstock)
     results = session.exec(query).all()
     query_total = select(func.count(Orderstock.IDOrder))
     total = session.exec(query_total).first()
     return {"data": results,
             "paging": {
-                "limit": limit,
-                "offset": offset,
+        
                 "total": total
             }}
 @router.get("/{id}")
@@ -79,7 +78,7 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: Backgro
                 status_code=400,
                 detail=f"Jenis stock '{item.jenis_stock}' tidak ditemukan"
             )
-    for item in order.items:
+
         order_stock = Orderstock(
             Tgl=date,
             IDOrder=new_id,
@@ -91,8 +90,8 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: Backgro
             Inputer=current_user.ID,
             Checked=False,
             Ket=item.keterangan_jenis_stock,
-            ID_Penerimaan=0  
-              )
+            ID_Penerimaan=0,
+        )
         session.add(order_stock)
     session.commit()
     session.refresh(new_order)

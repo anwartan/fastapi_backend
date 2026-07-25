@@ -162,7 +162,17 @@ def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,curr
         return {"message": "Data tidak ditemukan"}
     return {"data": results}
 
-
+@router.get("/category/filter/{category}")
+def filterbycategory(
+    session:SessionDBKafe,
+    category:str,
+    current_user: Member = Depends(get_current_user)
+):
+    query=select(Bborder).where(Bborder.Category==category)
+    subquery=session.exec(query).all()
+    return {
+        "data": subquery
+    }
 @router.get("/{Category}")
 def get(
     session: SessionDBKafe,
