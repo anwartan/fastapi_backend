@@ -19,13 +19,13 @@ async def get_app_version(request:Request,session:SessionDBKafe):
     querys=session.exec(query).all()
     FILE_NAME=""
     LATEST_VERSION=""
-    BULID_NUMBER=""
+    BUILD_NUMBER=""
     FORCE_UPDATE=""
     for i in querys:
         if i.Key=="latest_version":
             LATEST_VERSION=i.Value or ""
         elif i.Key=="latest_bulid_number":
-            BULID_NUMBER=int(i.Value or 0)
+            BUILD_NUMBER=int(i.Value or 0)
         elif i.Key=="force_update":
             FORCE_UPDATE=bool(int(i.Value or 0))
         elif i.Key=="apk_name":
@@ -36,8 +36,8 @@ async def get_app_version(request:Request,session:SessionDBKafe):
     download_url=str(request.url_for("download_apk"))
     return{
         "data":{
-            "latest_version":"1.0.0",
-            "latest_bulid_number":2,
+            "latest_version":LATEST_VERSION,
+            "latest_build_number":BUILD_NUMBER,
             "apk_url":download_url,
             "force_update":False,
         }
