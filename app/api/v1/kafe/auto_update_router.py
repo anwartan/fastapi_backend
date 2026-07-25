@@ -14,7 +14,7 @@ APK_DIR=Path(__file__).resolve().parent.parent.parent.parent/"apk"
 APK_FILENAME="coffeeday.apk"
 @router.get("/app_version")
 async def get_app_version(request:Request,session:SessionDBKafe):
-    keys=["latest_version","latest_bulid_number","force_update","apk_name"]
+    keys=["latest_version","latest_build_number","force_update","apk_name"]
     query=select(Config).where(Config.Key.in_(keys))
     querys=session.exec(query).all()
     FILE_NAME=""
@@ -24,7 +24,7 @@ async def get_app_version(request:Request,session:SessionDBKafe):
     for i in querys:
         if i.Key=="latest_version":
             LATEST_VERSION=i.Value or ""
-        elif i.Key=="latest_bulid_number":
+        elif i.Key=="latest_build_number":
             BUILD_NUMBER=int(i.Value or 0)
         elif i.Key=="force_update":
             FORCE_UPDATE=bool(int(i.Value or 0))
