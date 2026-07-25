@@ -31,31 +31,23 @@ def get_all(
     return {
         "data": results
     }   
-
-
 @router.get("/getallchecked")
 def get_all_checked(
     session: SessionDBKafe,
-    session_login: SessionDBKafeLogin,
     current_user: Member = Depends(get_current_user)
 ):
-    orders = session.exec(
+ 
+    query = (
         select(Bborder)
         .where(Bborder.Checked == 1)
         .order_by(Bborder.IDOrder.desc())
-    ).all()
+    )
 
-    data = []
+    results = session.exec(query).all()
 
-    for order in orders:
-        item = order.model_dump()
-
-        member = session_login.get(Member, order.Inputer)
-        item["Username"] = member.Username if member else None
-
-        data.append(item)
-
-    return {"data": data}
+    return {
+        "data": results
+    }  
 @router.get("/")
 def get_bborder(session: Session = Depends(get_session),current_user: dict = Depends(get_current_user)):
     try:
