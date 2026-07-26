@@ -178,7 +178,7 @@ def get(
     session: SessionDBKafe,
     session_login: SessionDBKafeLogin,
     Category: str,
-    limit: int = 10,
+    limit: int = 30,
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
 ):
@@ -255,7 +255,7 @@ def get_bborder(
     session_login: SessionDBKafeLogin,
     category: str,
     divisi: str,
-    limit: int = 10,
+    limit: int = 30,
     offset: int = 0,
     current_user: dict = Depends(get_current_user),
 ):
