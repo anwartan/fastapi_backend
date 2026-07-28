@@ -347,7 +347,7 @@ def get_item_by_category_and_id(
     return {"data": total}
 
 
-@router.get("/{id}/{category}/RecapanPengecekaan/recap")
+@router.get("/RecapanPengecekaan/recap/{id}/{category}")
 def get_item_recap_by_category_and_id(
     id: int,
     category: str,
