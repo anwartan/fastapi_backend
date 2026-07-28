@@ -5,6 +5,7 @@ from app.auth import get_current_user
 from app.database import SessionDBKafe, SessionDBKafeLogin
 from sqlmodel import select,func
 from app.model.kafe import belanja
+from app.model.kafe.Media import Media
 from app.model.kafe.Price import Price
 from app.model.kafe.Pricedetail import Pricedetail
 from app.model.kafe.belanja import Belanja
@@ -58,34 +59,6 @@ def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_cur
     else:
         return {"data": result}
     
-@router.delete("/{id}/{jenis}")
-def delete(
-    id: int,
-    jenis: str,
-    session: SessionDBKafe,
-    current_user: Member = Depends(get_current_user)
-):
-    query = (
-        select(Belanja)
-        .join(Bborder, Belanja.ID == Bborder.IDOrder) 
-        .where(Belanja.ID == id)
-        .where(Belanja.Jenis == jenis)
-        .where(Belanja.JmlhPenerima == 0)
-        .where(Bborder.Inputer == current_user.ID)
-    )
-
-    result = session.exec(query).first()
-
-    if not result:
-        raise HTTPException(
-            status_code=403,
-            detail="Hanya pembuat order yang dapat menghapus data."
-        )
-
-    session.delete(result)
-    session.commit()
-
-    return {"message": "Belanja deleted successfully"}
 
 @router.post("/create")
 def create(
@@ -261,6 +234,72 @@ async def penerimaan_belanja(
         "data": 
             input_Belanja
         }
+@router.put("/reset-penerimaan-item/{id}")
+def reset_penerimaan_item(
+    id: int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    belanja = session.exec(
+        select(Belanja).where(Belanja.ID == id)
+    ).first()
+
+    if belanja is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan."
+        )
+
+    medias = session.exec(
+        select(Media).where(
+            Media.SubjectId == id,
+            Media.SubjectType == Belanja.subject_type()
+        )
+    ).all()
+
+    for media in medias:
+        session.delete(media)
+
+    belanja.JmlhPenerima = 0
+    belanja.ID_Penerima = 0
+
+    session.add(belanja)
+
+    session.commit()
+    session.refresh(belanja)
+
+    return {
+        "message": "Item penerimaan berhasil direset"
+    }
+@router.delete("/{id}/{jenis}")
+def delete(
+    id: int,
+    jenis: str,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    query = (
+        select(Belanja)
+        .join(Bborder, Belanja.ID == Bborder.IDOrder) 
+        .where(Belanja.ID == id)
+        .where(Belanja.Jenis == jenis)
+        .where(Belanja.JmlhPenerima == 0)
+        .where(Bborder.Inputer == current_user.ID)
+    )
+
+    result = session.exec(query).first()
+
+    if not result:
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya pembuat order yang dapat menghapus data."
+        )
+
+    session.delete(result)
+    session.commit()
+
+    return {"message": "Belanja deleted successfully"}
+
 @router.put("/belanjaandetail/")
 def belanjaandetail(
     request: belanjaan_detail_item_request.BelanjaanDetailItemRequest,
@@ -346,6 +385,14 @@ def reset_belanjaandetail(
 @router.get("/belanjaandetail/{id}")
 def get_belanjaandetail_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     query = select(Belanja).where(Belanja.ID == id, Belanja.Jmlh != 0, Belanja.Price != 0)
+    result = session.exec(query).all()
+    if not result:
+        return JSONResponse(content={"message": "belanja not found"}, status_code=404)
+    else:
+        return {"data": result}
+@router.get("/penerimaan/{id}")
+def get_penerimaan_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Belanja).where(Belanja.ID == id, Belanja.JmlhPenerima != 0)
     result = session.exec(query).all()
     if not result:
         return JSONResponse(content={"message": "belanja not found"}, status_code=404)

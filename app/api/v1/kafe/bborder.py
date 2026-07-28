@@ -2,6 +2,7 @@ from datetime import date
 import select
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import Subquery
 from app.auth import get_current_user
 from app.database import SessionDBKafe, SessionDBKafeLogin, get_session
 from sqlmodel import Session, select,func
@@ -11,6 +12,7 @@ from app.model.kafe.member import Member
 from app.model.kafe.orderstock import Orderstock
 from app.model.kafe.belanja import Belanja
 from app.request.pengecekaan_request import PengecekaanRequest
+from app.request.updatepengecekaanrequest import UpdatePengecekaan
 router = APIRouter()
 
     
@@ -356,7 +358,7 @@ def get_item_recap_by_category_and_id(
         data = session.exec(
             select(Belanja).where(
                 Belanja.ID == id,
-                Belanja.Checked != False
+                Belanja.Checked == False
             )
         ).all()
 
@@ -364,7 +366,7 @@ def get_item_recap_by_category_and_id(
         data = session.exec(
             select(Orderstock).where(
                 Orderstock.IDOrder == id,
-                Orderstock.Checked != False
+                Orderstock.Checked == False
             )
         ).all()
 
@@ -381,4 +383,34 @@ def get_item_recap_by_category_and_id(
     return {
         "total": bborder.Total if bborder else 0,
         "data": data
+    }
+@router.put("/updatepengecekaan")
+def updatepengecekaan(
+    session: SessionDBKafe,
+    request: UpdatePengecekaan,
+    current_user: Member = Depends(get_current_user)
+):
+    belanja = session.exec(
+        select(Belanja).where(
+            Belanja.ID == request.id,
+            Belanja.Jenis == request.jenis
+        )
+    ).first()
+
+    if belanja is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan"
+        )
+
+    belanja.JmlhPenerima = request.jmlhpenerimaan
+    belanja.Jmlh = request.jmlh
+
+    session.add(belanja)
+    session.commit()
+    session.refresh(belanja)
+
+    return {
+        "message": "Berhasil update",
+        "data": belanja
     }

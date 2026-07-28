@@ -2,20 +2,24 @@ import select
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
+from sqlalchemy import Subquery
 from app.api.v1.kafe.belanja_router import get_media_service
 from app.auth import get_current_user
 from app.database import SessionDBKafe
 from sqlmodel import select,func
 
+from app.model.kafe.Pricedetail import Pricedetail
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
 from app.model.kafe.member import Member
 from app.model.kafe.orderstock import Orderstock
+from app.request import pengiriman_order_stock
 from app.request.createOrderRequestJenisStock import CreateOrderStockRequest
 from datetime import datetime 
 from app.model.kafe.orderstock import Orderstock
 from app.request import orderStockItemRequest
 from app.request.penerimaan_orderstock_request import InputPenerimaanOrderstockRequest
+from app.request.pengiriman_order_stock import PengirimanOrderStock
 from app.services.cafe_file_service import CafeFileService
 from app.services.firebase_service import FirebaseService
 from app.services.media_service import MediaService
@@ -48,7 +52,32 @@ def get_latest_id(session: SessionDBKafe,current_user: dict = Depends(get_curren
     query = select(func.max(Bborder.IDOrder))
     latest_id= session.exec(query).first()
     return latest_id if latest_id is not None else 0
+@router.get("/{jenis}/get_harga_stock")
+def get_harga_stock(
+    jenis: str,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    query = (
+        select(Pricedetail.Jmlh)
+        .join(
+            Orderstock,
+            Orderstock.Jenis == Pricedetail.Jenis
+        )
+        .where(Orderstock.Jenis == jenis)
+        .order_by(Pricedetail.ID_PriceDetail.desc())
 
+    )
+
+    harga = session.exec(query).first()
+
+    if harga is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Harga tidak ditemukan"
+        )
+
+    return {"data": harga}
 
 @router.post("/create")
 def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: BackgroundTasks,current_user: Member = Depends(get_current_user)):
@@ -90,6 +119,7 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: Backgro
             Inputer=current_user.ID,
             Checked=False,
             Ket=item.keterangan_jenis_stock,
+            JmlhPengiriman=0,
             ID_Penerimaan=0,
         )
         session.add(order_stock)
@@ -209,3 +239,28 @@ def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(
     query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
     result_jenis = session.exec(query_jenis).all()
     return {"data": result_jenis}
+@router.put("/pengiriman-stock")
+def pengirimanstock(
+    session:SessionDBKafe,
+    request:pengiriman_order_stock.PengirimanOrderStock,
+    current_user:Member=Depends(get_current_user),
+    
+):
+    query=select(Orderstock).where(Orderstock.IDOrder==request.id).where(Orderstock.Jenis==request.jenis)
+    Subquery=session.exec(query).first()
+    if Subquery is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Data tidak ditemukan"
+            )
+    Subquery.JmlhPengiriman = request.jmlhpengiriman
+    session.add(Subquery)
+    session.commit()
+    session.refresh(Subquery)
+
+    return {
+        "message": "Berhasil update",
+        "data": Subquery
+    }
+
+ 
