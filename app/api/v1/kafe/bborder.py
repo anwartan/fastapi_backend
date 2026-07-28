@@ -358,7 +358,7 @@ def get_item_recap_by_category_and_id(
         data = session.exec(
             select(Belanja).where(
                 Belanja.ID == id,
-                Belanja.Checked == False
+                Belanja.Checked == 0
             )
         ).all()
 
@@ -366,7 +366,7 @@ def get_item_recap_by_category_and_id(
         data = session.exec(
             select(Orderstock).where(
                 Orderstock.IDOrder == id,
-                Orderstock.Checked == False
+                Orderstock.Checked == 0
             )
         ).all()
 
