@@ -347,7 +347,7 @@ def get_item_by_category_and_id(
     return {"data": total}
 
 
-@router.get("/RecapanPengecekaan/recap/{id}/{category}")
+@router.get("/{id}/{category}/RecapanPengecekaan/recap")
 def get_item_recap_by_category_and_id(
     id: int,
     category: str,
@@ -358,7 +358,6 @@ def get_item_recap_by_category_and_id(
         data = session.exec(
             select(Belanja).where(
                 Belanja.ID == id,
-                Belanja.Checked == 0
             )
         ).all()
 
@@ -366,7 +365,6 @@ def get_item_recap_by_category_and_id(
         data = session.exec(
             select(Orderstock).where(
                 Orderstock.IDOrder == id,
-                Orderstock.Checked == 0
             )
         ).all()
 
