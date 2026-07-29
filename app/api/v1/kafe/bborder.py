@@ -414,32 +414,32 @@ def updatebelanjapengecekaan(
         "message": "Berhasil update",
         "data": belanja
     }
-@router.put("/updatestockpengecekaan")
-def updatestockpengecekaan(
-    session: SessionDBKafe,
-    request: UpdateStockPengecekaan,
-    current_user: Member = Depends(get_current_user)
-):
-    stock = session.exec(
-        select(Orderstock).where(
-            Orderstock.IDOrder == request.id,
-            Orderstock.Jenis == request.jenis
-        )
-    ).first()
+# @router.put("/updatestockpengecekaan")
+# def updatestockpengecekaan(
+#     session: SessionDBKafe,
+#     request: UpdateStockPengecekaan,
+#     current_user: Member = Depends(get_current_user)
+# ):
+#     stock = session.exec(
+#         select(Orderstock).where(
+#             Orderstock.IDOrder == request.id,
+#             Orderstock.Jenis == request.jenis
+#         )
+#     ).first()
 
-    if stock is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Data tidak ditemukan"
-        )
+#     if stock is None:
+#         raise HTTPException(
+#             status_code=404,
+#             detail="Data tidak ditemukan"
+#         )
 
-    stock.JmlhInput = request.jmlhinput
-    stock.JmlhPengiriman=request.jmlhpengiriman
-    session.add(stock)
-    session.commit()
-    session.refresh(stock)
+#     stock.JmlhInput = request.jmlhinput
+#     stock.JmlhPengiriman=request.jmlhpengiriman
+#     session.add(stock)
+#     session.commit()
+#     session.refresh(stock)
 
-    return {
-        "message": "Berhasil update",
-        "data": stock
-    }
+#     return {
+#         "message": "Berhasil update",
+#         "data": stock
+#     }
