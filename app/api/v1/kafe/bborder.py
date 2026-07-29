@@ -415,7 +415,7 @@ def updatebelanjapengecekaan(
         "data": belanja
     }
 @router.put("/updatestockpengecekaan")
-def updatebelanjapengecekaan(
+def updatestockpengecekaan(
     session: SessionDBKafe,
     request: UpdateStockPengecekaan,
     current_user: Member = Depends(get_current_user)
