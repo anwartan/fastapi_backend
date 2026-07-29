@@ -239,6 +239,17 @@ def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(
     query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
     result_jenis = session.exec(query_jenis).all()
     return {"data": result_jenis}
+@router.get("/{id}/jenis/pengiriman")
+def get_by_jenis_pengiriman(id: int,  session: SessionDBKafe, current_user: dict = Depends(get_current_user) ):
+   
+    query = select(Orderstock).where(Orderstock.IDOrder == id).where(Orderstock.JmlhPengiriman == 0.0).where(Orderstock.JmlhPengiriman==0)
+    results = session.exec(query).all()
+    result_mapped = []
+    for result in results:
+        result_mapped.append(result.Jenis)
+    query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
+    result_jenis = session.exec(query_jenis).all()
+    return {"data": result_jenis}
 @router.put("/pengiriman-stock")
 def pengirimanstock(
     session:SessionDBKafe,
