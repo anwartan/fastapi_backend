@@ -119,7 +119,7 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: Backgro
             Inputer=current_user.ID,
             Checked=False,
             Ket=item.keterangan_jenis_stock,
-            JmlhPengiriman=0,
+            JmlhPengiriman=0.0,
             ID_Penerimaan=0,
         )
         session.add(order_stock)

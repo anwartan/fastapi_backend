@@ -13,6 +13,7 @@ from app.model.kafe.orderstock import Orderstock
 from app.model.kafe.belanja import Belanja
 from app.request.pengecekaan_request import PengecekaanRequest
 from app.request.updatepengecekaanrequest import UpdatePengecekaan
+from app.request.updatestockpengecekaan import UpdateStockPengecekaan
 router = APIRouter()
 
     
@@ -359,6 +360,7 @@ def get_item_recap_by_category_and_id(
             select(Belanja).where(
                 Belanja.ID == id,
             )
+
         ).all()
 
     elif category == "OS":
@@ -382,8 +384,8 @@ def get_item_recap_by_category_and_id(
         "total": bborder.Total if bborder else 0,
         "data": data
     }
-@router.put("/updatepengecekaan")
-def updatepengecekaan(
+@router.put("/updatebelanjapengecekaan")
+def updatebelanjapengecekaan(
     session: SessionDBKafe,
     request: UpdatePengecekaan,
     current_user: Member = Depends(get_current_user)
@@ -411,4 +413,33 @@ def updatepengecekaan(
     return {
         "message": "Berhasil update",
         "data": belanja
+    }
+@router.put("/updatestockpengecekaan")
+def updatebelanjapengecekaan(
+    session: SessionDBKafe,
+    request: UpdateStockPengecekaan,
+    current_user: Member = Depends(get_current_user)
+):
+    stock = session.exec(
+        select(Orderstock).where(
+            Orderstock.IDOrder == request.id,
+            Orderstock.Jenis == request.jenis
+        )
+    ).first()
+
+    if stock is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan"
+        )
+
+    stock.JmlhInput = request.jmlhinput
+    stock.JmlhPengiriman=request.jmlhpengiriman
+    session.add(stock)
+    session.commit()
+    session.refresh(stock)
+
+    return {
+        "message": "Berhasil update",
+        "data": stock
     }

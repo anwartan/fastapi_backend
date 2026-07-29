@@ -9,7 +9,7 @@ class Orderstock(SQLModel, table=True):
     Jenis: str = Field(default=None, primary_key=True)
     Jmlh: float
     JmlhInp: float
-    JmlhPengiriman:int
+    JmlhPengiriman:float
     unit: str
     Divisi: str
     Inputer: int
