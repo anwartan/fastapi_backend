@@ -8,6 +8,7 @@ from app.auth import get_current_user
 from app.database import SessionDBKafe
 from sqlmodel import select,func
 
+from app.model.kafe.Media import Media
 from app.model.kafe.Pricedetail import Pricedetail
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
@@ -239,6 +240,43 @@ def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(
     query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
     result_jenis = session.exec(query_jenis).all()
     return {"data": result_jenis}
+@router.put("/reset-penerimaan-stock-item/{id}")
+def reset_penerimaan_item(
+    id: int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    orderstock = session.exec(
+        select(Orderstock).where(Orderstock.ID_OrderStock == id)
+    ).first()
+
+    if orderstock is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan."
+        )
+
+    medias = session.exec(
+        select(Media).where(
+            Media.SubjectId == id,
+            Media.SubjectType == Orderstock.subject_type()
+        )
+    ).all()
+
+    for media in medias:
+        session.delete(media)
+
+    orderstock.JmlhInp = 0
+    orderstock.Inputer = 0
+
+    session.add(orderstock)
+
+    session.commit()
+    session.refresh(orderstock)
+
+    return {
+        "message": "Item penerimaan berhasil direset"
+    }
 @router.get("/{id}/jenis/pengiriman")
 def get_by_jenis_pengiriman(id: int,  session: SessionDBKafe, current_user: dict = Depends(get_current_user) ):
    

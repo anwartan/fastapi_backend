@@ -211,14 +211,20 @@ async def penerimaan_belanja(
         return {
             "message": "Data tidak ditemukan"
         }
-
-    # update data
-    input_Belanja.JmlhPenerima = penerimaan.JmlhPenerima,
+    if input_Belanja.JmlhPenerima != 0 or input_Belanja.ID_Penerima != 0:
+        return {
+            "message": "Data sudah terisi"
+        }
+    
+    input_Belanja.JmlhPenerima = penerimaan.JmlhPenerima
     input_Belanja.ID_Penerima=current_user.ID
 
     # optional
     
-    
+    if(len(files) > 1):
+        return{
+            "message":"tidak boleh lebih dari 1"
+        }
     uploaded_files = await CafeFileService.massUpload(files)
 
 
@@ -241,7 +247,7 @@ def reset_penerimaan_item(
     current_user: Member = Depends(get_current_user)
 ):
     belanja = session.exec(
-        select(Belanja).where(Belanja.ID == id)
+        select(Belanja).where(Belanja.ID_Belanja == id)
     ).first()
 
     if belanja is None:
