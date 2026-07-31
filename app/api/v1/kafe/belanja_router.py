@@ -4,6 +4,10 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks,File,UploadFile, D
 from app.auth import get_current_user
 from app.database import SessionDBKafe, SessionDBKafeLogin
 from sqlmodel import select,func
+from app.model.kafe import belanja
+from app.model.kafe.Media import Media
+from app.model.kafe.Price import Price
+from app.model.kafe.Pricedetail import Pricedetail
 from app.model.kafe.belanja import Belanja
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
@@ -32,16 +36,15 @@ def get_by_ids(session: SessionDBKafe, id: int,):
     return result
 
 @router.get("/")
-def get(session: SessionDBKafe, limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
+def get(session: SessionDBKafe, current_user: dict = Depends(get_current_user)):
     
-    query = select(Belanja).limit(limit).offset(offset)
+    query = select(Belanja)
     results = session.exec(query).all()
     query_total = select(func.count(Belanja.ID))
     total = session.exec(query_total).all()
     return {"data": results,
             "paging": {
-                "limit": limit,
-                "offset": offset,
+                
                 "total": total
             }}
 @router.get("/{id}")
@@ -56,34 +59,6 @@ def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_cur
     else:
         return {"data": result}
     
-@router.delete("/{id}/{jenis}")
-def delete(
-    id: int,
-    jenis: str,
-    session: SessionDBKafe,
-    current_user: Member = Depends(get_current_user)
-):
-    query = (
-        select(Belanja)
-        .join(Bborder, Belanja.ID == Bborder.IDOrder) 
-        .where(Belanja.ID == id)
-        .where(Belanja.Jenis == jenis)
-        .where(Belanja.JmlhPenerima == 0)
-        .where(Bborder.Inputer == current_user.ID)
-    )
-
-    result = session.exec(query).first()
-
-    if not result:
-        raise HTTPException(
-            status_code=403,
-            detail="Hanya pembuat order yang dapat menghapus data."
-        )
-
-    session.delete(result)
-    session.commit()
-
-    return {"message": "Belanja deleted successfully"}
 
 @router.post("/create")
 def create(
@@ -145,16 +120,19 @@ def create(
      # token3="cPuLbXpaT8OXj6BTU79y70:APA91bGZKSCm-kEGzZXZ4ddDTUgEZR-gsSHEbYDImi2Ot838evPwWElRTNGRdBGShP_7Ea2_Z3T_q5rytK1OchtINDfcTtMgtcyZIT0hGScTKuEMrhcYSdY";
     # FirebaseService.send_notification(token1, "New Order Created", "A new order has been created.") ## delay
     # FirebaseService.send_notification(token2, "New Order Created", "A new order has been created.") ## delay
-    # # bgTask.add_task(order_stock_created_listener)
+   
     message = f"{current_user.Nama} membuat order baru."
-    FirebaseService.send_to_topic("order_belanja_notification", "Order Belanja Baru", message, {
-        "type":"order_belanja",
-        "id": str(new_order.IDOrder),
-    })
+    bgTask.add_task(on_create_belanja_order, message, new_order)
     return{
         "data":new_order 
     }
 
+
+def on_create_belanja_order(message: str, new_order: Bborder):
+    FirebaseService.send_to_topic("order_belanja_notification", "Order Belanja Baru", message, {
+        "type":"order_belanja",
+        "id": str(new_order.IDOrder),
+    })
 
 
 @router.put("/")
@@ -233,14 +211,20 @@ async def penerimaan_belanja(
         return {
             "message": "Data tidak ditemukan"
         }
-
-    # update data
-    input_Belanja.JmlhPenerima = penerimaan.JmlhPenerima,
+    if input_Belanja.JmlhPenerima != 0 or input_Belanja.ID_Penerima != 0:
+        return {
+            "message": "Data sudah terisi"
+        }
+    
+    input_Belanja.JmlhPenerima = penerimaan.JmlhPenerima
     input_Belanja.ID_Penerima=current_user.ID
 
     # optional
     
-    
+    if(len(files) > 1):
+        return{
+            "message":"tidak boleh lebih dari 1"
+        }
     uploaded_files = await CafeFileService.massUpload(files)
 
 
@@ -256,38 +240,123 @@ async def penerimaan_belanja(
         "data": 
             input_Belanja
         }
+@router.put("/reset-penerimaan-item/{id}")
+def reset_penerimaan_item(
+    id: int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    belanja = session.exec(
+        select(Belanja).where(Belanja.ID_Belanja == id)
+    ).first()
+
+    if belanja is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan."
+        )
+
+    medias = session.exec(
+        select(Media).where(
+            Media.SubjectId == id,
+            Media.SubjectType == Belanja.subject_type()
+        )
+    ).all()
+
+    for media in medias:
+        session.delete(media)
+
+    belanja.JmlhPenerima = 0
+    belanja.ID_Penerima = 0
+
+    session.add(belanja)
+
+    session.commit()
+    session.refresh(belanja)
+
+    return {
+        "message": "Item penerimaan berhasil direset"
+    }
+@router.delete("/{id}/{jenis}")
+def delete(
+    id: int,
+    jenis: str,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    query = (
+        select(Belanja)
+        .join(Bborder, Belanja.ID == Bborder.IDOrder) 
+        .where(Belanja.ID == id)
+        .where(Belanja.Jenis == jenis)
+        .where(Belanja.JmlhPenerima == 0)
+        .where(Bborder.Inputer == current_user.ID)
+    )
+
+    result = session.exec(query).first()
+
+    if not result:
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya pembuat order yang dapat menghapus data."
+        )
+
+    session.delete(result)
+    session.commit()
+
+    return {"message": "Belanja deleted successfully"}
+
 @router.put("/belanjaandetail/")
 def belanjaandetail(
-     request: belanjaan_detail_item_request.BelanjaanDetailItemRequest, session: SessionDBKafe,current_user: Member = Depends(get_current_user)
+    request: belanjaan_detail_item_request.BelanjaanDetailItemRequest,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
 ):
 
-    # cari data
+    # Cari data Belanja
     data = session.exec(
-        select(Belanja).where(Belanja.ID == request.id, Belanja.Jenis == request.jenis)
+        select(Belanja).where(
+            Belanja.ID == request.id,
+            Belanja.Jenis == request.jenis
+        )
     ).first()
-    print(data)
 
-    # cek ada atau tidak
     if data is None:
         raise HTTPException(
             status_code=404,
             detail="Data tidak ditemukan"
         )
-
-    # update field
     data.Price = request.harga
     data.Jmlh = request.qty
     data.ket = request.ket
     data.ID_UserBelanja = current_user.ID
 
-    # simpan
+    
     session.add(data)
+    priceDetail = Pricedetail()
+    priceDetail.Tgl=request.tgl
+    priceDetail.Jenis= request.jenis
+    priceDetail.Jmlh=request.harga
+    priceDetail.Inputer=current_user.ID
+    session.add(priceDetail)
+    price = session.exec(
+        select(Price).where(Price.Jenis == request.jenis)
+    ).first()
+
+    if price:
+        price.Price = request.harga
+    else:
+        price = Price()
+        price.Jenis = request.jenis
+        price.Price = request.harga
+        session.add(price)
     session.commit()
     session.refresh(data)
+    
 
     return {
         "message": "Berhasil update",
-        "data": data
+        "data": data,
     }
 @router.put("/resetbelanjaandetail")
 def reset_belanjaandetail(
@@ -307,12 +376,10 @@ def reset_belanjaandetail(
             detail="Data tidak ditemukan"
         )
 
-    # update field
     data.Price = 0
     data.Jmlh = 0
     data.ket = ""
 
-    # simpan
     session.add(data)
     session.commit()
     session.refresh(data)
@@ -329,9 +396,17 @@ def get_belanjaandetail_by_id(id: int,  session: SessionDBKafe,current_user: dic
         return JSONResponse(content={"message": "belanja not found"}, status_code=404)
     else:
         return {"data": result}
+@router.get("/penerimaan/{id}")
+def get_penerimaan_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Belanja).where(Belanja.ID == id, Belanja.JmlhPenerima != 0)
+    result = session.exec(query).all()
+    if not result:
+        return JSONResponse(content={"message": "belanja not found"}, status_code=404)
+    else:
+        return {"data": result}
 @router.get("/{id}/jenis/byjumlah")
 def get_by_jenis_jumlah(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    query = select(Belanja).where(Belanja.ID == id).where(Belanja.Jmlh == 0)
+    query = select(Belanja).where(Belanja.ID == id).where(Belanja.Jmlh == 0).where(Belanja.Jmlh==0.0)
     results = session.exec(query).all()
     result_mapped = []
     for result in results:
