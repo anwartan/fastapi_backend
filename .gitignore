@@ -71,6 +71,7 @@ htmlcov/
 dmypy.json
 /uploads
 serviceAccountKey.json
+serviceAccountKeyFarm.json
 *.json
 coffeeday.apk
 coffeeday1.apk

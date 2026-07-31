@@ -24,15 +24,16 @@ router = APIRouter()
 @router.get("/hargaluar")
 def hargaluar(session: SessionDB1):
     now = datetime.now().date()
-    statement_new = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").order_by(Harga.Tgl.desc())
-    new_price_telur = session.exec(statement_new).first()
-    statement_old = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").where(Harga.Tgl < now).order_by(Harga.Tgl.desc())
-    old_price_telur = session.exec(statement_old).first()
+    statement_egg = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").order_by(Harga.Tgl.desc()).limit(2)
+    statement_egg_limit = session.exec(statement_egg).all()
+    new_price_telur = statement_egg_limit[0] or None
+    old_price_telur = statement_egg_limit[1] or None
 
-    arab_statement_new = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").order_by(Harga.Tgl.desc())
-    new_price_telur_arab = session.exec(arab_statement_new).first()
-    arab_statement_old = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").where(Harga.Tgl < now).order_by(Harga.Tgl.desc())
-    old_price_telur_arab = session.exec(arab_statement_old).first()
+
+    statement_egg_arab = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur Arab").order_by(Harga.Tgl.desc()).limit(2)
+    statement_egg_arab_limit = session.exec(statement_egg_arab).all()
+    new_price_telur_arab = statement_egg_arab_limit[0] or None
+    old_price_telur_arab = statement_egg_arab_limit[1] or None
 
     new_price_telur_value = 0
     new_price_telur_arab_value = 0
@@ -203,13 +204,8 @@ def telursisalayer(session: SessionDB1, date:str):
         ]
     }
 @router.get("/harga/range")
-def harga_by_range(session: SessionDB1, start_date: str | None, end_date: str | None):
+def harga_by_range(session: SessionDB1, start_date: str | None = None, end_date: str | None = None):
     print(f"Received: start_date={start_date}, end_date={end_date}")
-
-    if start_date == "":
-        start_date = None
-    if end_date == "":
-        end_date = None
 
     subquery_query = select(Harga.Jenis, func.max(Harga.Tgl).label("max_tgl"))
 
