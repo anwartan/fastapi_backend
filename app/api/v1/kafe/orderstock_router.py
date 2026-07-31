@@ -13,7 +13,6 @@ from app.model.kafe.Pricedetail import Pricedetail
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
 from app.model.kafe.member import Member
-from app.model.kafe.orderstock import Orderstock
 from app.request import pengiriman_order_stock
 from app.request.createOrderRequestJenisStock import CreateOrderStockRequest
 from datetime import datetime 
@@ -201,18 +200,25 @@ async def penerimaan_orderstock(
         .first()
     )
 
-    # jika data tidak ditemukan
     if input_orderstock is None:
         return {
             "message": "Data tidak ditemukan"
         }
-
-    # update data
+    if input_orderstock is None:
+        return {
+            "message": "Data tidak ditemukan"
+        }
+    if input_orderstock.JmlhInp != 0 or input_orderstock.ID_Penerimaan != 0:
+        return {
+            "message": "Data sudah terisi"
+        }
     input_orderstock.JmlhInp = penerimaan.JmlhPenerimaan
     input_orderstock.ID_Penerimaan=current_user.ID
 
-    # optional
-    
+    if(len(files) > 1):
+        return{
+            "message":"tidak boleh lebih dari 1"
+        }
     
     uploaded_files = await CafeFileService.massUpload(files)
 
@@ -229,6 +235,14 @@ async def penerimaan_orderstock(
         "data": 
             input_orderstock
         }
+@router.get("/penerimaan/{id}")
+def get_penerimaan_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Orderstock).where(Orderstock.ID_OrderStock == id, Orderstock.JmlhInp != 0)
+    result = session.exec(query).all()
+    if not result:
+        return JSONResponse(content={"message": "belanja not found"}, status_code=404)
+    else:
+        return {"data": result}
 @router.get("/{id}/jenis")
 def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(get_current_user) ):
    

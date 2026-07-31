@@ -1,4 +1,7 @@
+
+
 from sqlalchemy.orm import Session
+from sqlmodel import select
 from app.model.kafe.Media import Media
 from app.model.FileData import FileData
 from fastapi import Depends
@@ -34,6 +37,10 @@ class MediaService:
             self.session.commit()
             return True
         return False
+
+    def getAllMediaBySubjectIdAndType(self, id: int, type: str):
+        statement_medias = select(Media).where(Media.SubjectType == type and Media.SubjectId == id)
+        return self.session.exec(statement_medias).all()
 
 
 
