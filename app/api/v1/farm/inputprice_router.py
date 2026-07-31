@@ -1,10 +1,13 @@
 
 from pydoc import text
+from unittest import result
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import Subquery, select
 from sqlalchemy.orm import Session, subqueryload
+from sqlmodel import distinct
 from app.api.v1.farm.request.input_harga_request import InputHargaRequest
+from app.api.v1.kafe import jenisstock_router
 from app.database import SessionDB1
 from app.model.farm.harga import Harga
 router = APIRouter()
@@ -46,11 +49,11 @@ def delete_harga(data: InputHargaRequest, session: SessionDB1):
     }
 @router.get("/getoption")
 def addharga(session: SessionDB1):
-    option_harga = select(Harga.Jenis)
+    option_harga = select(distinct(Harga.Jenis)).order_by(Harga.Tgl.desc())
     result = session.exec(option_harga).all()
-    return {
-        "data": {
-            "jenis": i.Jenis,
+    return [
+        {
+            "jenis":jenis[0]
         }
-        for i in result
-    }
+        for jenis in result
+    ]
