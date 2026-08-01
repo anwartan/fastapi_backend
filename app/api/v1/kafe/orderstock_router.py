@@ -52,32 +52,46 @@ def get_latest_id(session: SessionDBKafe,current_user: dict = Depends(get_curren
     query = select(func.max(Bborder.IDOrder))
     latest_id= session.exec(query).first()
     return latest_id if latest_id is not None else 0
-@router.get("/{jenis}/get_harga_stock")
-def get_harga_stock(
+@router.get("/orderstock/{jenis}/harga")
+async def get_harga_stock(
     jenis: str,
     session: SessionDBKafe,
-    current_user: Member = Depends(get_current_user)
 ):
-    query = (
-        select(Pricedetail.Jmlh)
-        .join(
-            Orderstock,
-            Orderstock.Jenis == Pricedetail.Jenis
-        )
+    print("Jenis diterima:", jenis)
+    order_stock = session.exec(
+        select(Orderstock)
         .where(Orderstock.Jenis == jenis)
-        .order_by(Pricedetail.ID_PriceDetail.desc())
+    ).first()
 
-    )
+    if not order_stock:
+        raise HTTPException(
+            status_code=404,
+            detail="Jenis OrderStock tidak ditemukan"
+        )
 
-    harga = session.exec(query).first()
+    # Ambil harga terbaru dari PriceDetail
+    harga = session.exec(
+        select(Pricedetail)
+        .where(Pricedetail.Jenis == jenis)
+        .order_by(
+            Pricedetail.Tgl.desc(),
+            Pricedetail.ID_PriceDetail.desc()
+        )
+    ).first()
 
-    if harga is None:
+    if not harga:
         raise HTTPException(
             status_code=404,
             detail="Harga tidak ditemukan"
         )
 
-    return {"data": harga}
+    return {
+        "message": "Berhasil",
+        "data": {
+            "Jenis": jenis,
+            "Harga": harga.Jmlh
+        }
+    }
 
 @router.post("/create")
 def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: BackgroundTasks,current_user: Member = Depends(get_current_user)):
@@ -92,8 +106,9 @@ def create(session: SessionDBKafe, order:CreateOrderStockRequest,bgTask: Backgro
         Category=order.category,
         Checked=False,
         ID_Check=0,
-        Ket=order.ket
-
+        Ket=order.ket,
+        PengambilanUang=0,
+        PenambahanUang=0
 
     )
     session.add(new_order)
@@ -208,10 +223,12 @@ async def penerimaan_orderstock(
         return {
             "message": "Data tidak ditemukan"
         }
-    if input_orderstock.JmlhInp != 0 or input_orderstock.ID_Penerimaan != 0:
+  
+    if input_orderstock.JmlhInp != 0.0 or input_orderstock.ID_Penerimaan != 0:
         return {
             "message": "Data sudah terisi"
         }
+
     input_orderstock.JmlhInp = penerimaan.JmlhPenerimaan
     input_orderstock.ID_Penerimaan=current_user.ID
 
@@ -237,10 +254,18 @@ async def penerimaan_orderstock(
         }
 @router.get("/penerimaan/{id}")
 def get_penerimaan_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
-    query = select(Orderstock).where(Orderstock.ID_OrderStock == id, Orderstock.JmlhInp != 0)
+    query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.JmlhInp != 0)
     result = session.exec(query).all()
     if not result:
-        return JSONResponse(content={"message": "belanja not found"}, status_code=404)
+        return JSONResponse(content={"message": "orderstock not found"}, status_code=404)
+    else:
+        return {"data": result}
+@router.get("/pengiriman/{id}")
+def get_pengiriman_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
+    query = select(Orderstock).where(Orderstock.IDOrder == id, Orderstock.JmlhPengiriman != 0)
+    result = session.exec(query).all()
+    if not result:
+        return JSONResponse(content={"message": "orderstock not found"}, status_code=404)
     else:
         return {"data": result}
 @router.get("/{id}/jenis")
@@ -254,6 +279,33 @@ def get_by_jenis(id: int,  session: SessionDBKafe, current_user: dict = Depends(
     query_jenis = select(Jnsstock).where(Jnsstock.Jenis.in_(result_mapped))
     result_jenis = session.exec(query_jenis).all()
     return {"data": result_jenis}
+# @router.get
+@router.put("/reset-pengiriman-stock/{id}")
+def reset_pengiriman_stock(
+    id: int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    orderstock = session.exec(
+        select(Orderstock).where(Orderstock.IDOrder == id)
+    ).first()
+
+    if orderstock is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan."
+        )
+
+    orderstock.JmlhPengiriman = 0.0
+
+    session.add(orderstock)
+
+    session.commit()
+    session.refresh(orderstock)
+
+    return {
+        "message": "Item pengiriman berhasil direset"
+    }
 @router.put("/reset-penerimaan-stock-item/{id}")
 def reset_penerimaan_item(
     id: int,
@@ -281,7 +333,7 @@ def reset_penerimaan_item(
         session.delete(media)
 
     orderstock.JmlhInp = 0
-    orderstock.Inputer = 0
+    orderstock.ID_Penerimaan = 0
 
     session.add(orderstock)
 
