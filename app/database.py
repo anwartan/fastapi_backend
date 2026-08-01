@@ -15,9 +15,9 @@ mysql_database_name_kafe_login = os.getenv("DATABASE_NAME_KAFE_LOGIN")
 mysql_url = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name}"
 mysql_url_kafe = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name_kafe}"
 mysql_url_kafe_login = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database_name_kafe_login}"
-engine_db = create_engine(mysql_url , echo=True, pool_pre_ping=True, pool_recycle=3600, max_overflow=15)
-engine_db_kafe = create_engine(mysql_url_kafe, echo=True, pool_pre_ping=True, pool_recycle=3600,max_overflow=15)
-engine_db_kafe_login = create_engine(mysql_url_kafe_login, echo=True, pool_pre_ping=True, pool_recycle=3600,max_overflow=15)
+engine_db = create_engine(mysql_url , echo=True, pool_pre_ping=True, pool_recycle=3600,)
+engine_db_kafe = create_engine(mysql_url_kafe, echo=True, pool_pre_ping=True, pool_recycle=3600)
+engine_db_kafe_login = create_engine(mysql_url_kafe_login, echo=True, pool_pre_ping=True, pool_recycle=3600)
 
 def get_session():
     session = Session(engine_db)
