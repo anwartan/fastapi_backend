@@ -144,7 +144,26 @@ def get_bborder_by_tanggal(
     )
 
     return {"data": session.exec(query).all()}
+@router.get("/bborder/{id_order}")
+def get_bborder_by_order(
+    id_order: int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user),
+):
+    bborder = session.exec(
+        select(Bborder).where(Bborder.IDOrder == id_order)
+    ).first()
 
+    if bborder is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Order tidak ditemukan"
+        )
+
+    return {
+        "message": "Berhasil",
+        "data": bborder
+    }
 @router.get("/{Category}/{Tanggal}")
 def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,current_user: dict = Depends(get_current_user)):
     
@@ -176,6 +195,9 @@ def filterbycategory(
     return {
         "data": subquery
     }
+
+
+
 @router.get("/{Category}")
 def get(
     session: SessionDBKafe,
