@@ -287,7 +287,7 @@ def reset_pengiriman_stock(
     current_user: Member = Depends(get_current_user)
 ):
     orderstock = session.exec(
-        select(Orderstock).where(Orderstock.IDOrder == id)
+        select(Orderstock).where(Orderstock.ID_OrderStock == id)
     ).first()
 
     if orderstock is None:
