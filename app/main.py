@@ -19,7 +19,7 @@ from app.api.v1.kafe.price_router import router as price_router
 from app.api.v1.kafe.biometric_router import router as biometric_router
 from app.api.v1.kafe.notifikasi_router import router as notifikasi_router
 from app.api.v1.kafe.auto_update_router import router as auto_update_router
-
+from app.api.v1.kafe.laporanperitem import router as laporanperitem
 from app.database import test_database_connection
 import logging
 
@@ -61,6 +61,7 @@ app.include_router(price_router, prefix=base_kafe_url+"/pricedetail", tags=["pri
 app.include_router(biometric_router,prefix=base_kafe_url+"/biometric",tags=["biometric"])
 app.include_router(notifikasi_router,prefix=base_kafe_url+"/notifikasi",tags=["notifikasi"])
 app.include_router(auto_update_router,prefix=base_kafe_url+"/update",tags=["update"])
+app.include_router(laporanperitem, prefix=base_kafe_url+"/laporanperitem", tags=["laporanperitem"])
 
 base_farm_url = base_url + "/farm"
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
