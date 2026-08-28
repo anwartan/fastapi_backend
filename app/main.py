@@ -1,14 +1,17 @@
-from fastapi import FastAPI
+import time
+
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.farm import ayamklr_router, ayammini_router, inputprice_router, langsir_router, pickuptelur_router, produksiluar_router, report_router
-from app.api.v1.kafe import biometric_router, notifikasi_router, price_router
+from app.api.v1.kafe import biometric_router, notifikasi_router, payrol, price_router
 from app.database import test_database_connection
 import logging
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.kafe.testing_router import router as testing_router
 from app.api.v1.kafe.jenisstock_router import router as jenisstock_router
 from app.api.v1.kafe.belanja_router import router as belanja_router
 from app.api.v1.kafe.orderstock_router import router as order_router
@@ -21,6 +24,7 @@ from app.api.v1.kafe.notifikasi_router import router as notifikasi_router
 from app.api.v1.kafe.auto_update_router import router as auto_update_router
 from app.api.v1.kafe.laporanperitem import router as laporanperitem
 from app.database import test_database_connection
+from app.ratelimiter import RateLimiterStore
 import logging
 
 logging.basicConfig(
@@ -33,6 +37,37 @@ logging.basicConfig(
 )
 
 app = FastAPI()
+limiter = RateLimiterStore(max_tokens=2, refill_rate=2, interval=1.0)
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """
+    Middleware that enforces per-IP rate limiting on every request.
+    Adds standard rate limit headers to every response.
+    """
+    # Identify the client by IP address.
+    client_ip = request.client.host
+    bucket = limiter.get_bucket(client_ip)
+
+    # Check if the client has tokens available.
+    if not bucket.allow_request():
+        retry_after = bucket.get_reset_time() - time.time()
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Try again later."},
+            headers={
+                "Retry-After": str(max(1, int(retry_after))),
+                "X-RateLimit-Limit": str(bucket.max_tokens),
+                "X-RateLimit-Remaining": str(bucket.get_remaining()),
+                "X-RateLimit-Reset": str(int(bucket.get_reset_time())),
+            },
+        )
+
+    # Request is allowed. Process it and add rate limit headers to the response.
+    response = await call_next(request)
+    response.headers["X-RateLimit-Limit"] = str(bucket.max_tokens)
+    response.headers["X-RateLimit-Remaining"] = str(bucket.get_remaining())
+    response.headers["X-RateLimit-Reset"] = str(int(bucket.get_reset_time()))
+    return response
 base_url = "/api/v1"
 
 app.add_middleware(
@@ -50,6 +85,11 @@ def startup_event():
     for route in app.routes:
         logging.info(f"Route terdaftar: {route.path}")
 
+@app.get("/data")
+async def get_data():
+    return {"data": "Some important information"}
+
+
 base_kafe_url = base_url + "/kafe"
 app.include_router(jenisstock_router, prefix=base_kafe_url+"/jenisstock", tags=["JenisStock"])
 app.include_router(belanja_router, prefix=base_kafe_url+"/belanja", tags=["Belanja"])
@@ -62,7 +102,8 @@ app.include_router(biometric_router,prefix=base_kafe_url+"/biometric",tags=["bio
 app.include_router(notifikasi_router,prefix=base_kafe_url+"/notifikasi",tags=["notifikasi"])
 app.include_router(auto_update_router,prefix=base_kafe_url+"/update",tags=["update"])
 app.include_router(laporanperitem, prefix=base_kafe_url+"/laporanperitem", tags=["laporanperitem"])
-
+app.include_router(payrol.router, prefix=base_kafe_url+"/payrol", tags=["payrol"])
+app.include_router(testing_router,prefix=base_kafe_url+"/testing",tags=['testing'])
 base_farm_url = base_url + "/farm"
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
 app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=["Ayamklr"])

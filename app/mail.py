@@ -5,7 +5,7 @@ from fastapi import Depends
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("MAIL_USERNAME", ""),
     MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", ""),  # Use an App Password, not your master password  # type: ignore
-    MAIL_FROM=os.getenv("MAIL_FROM", ""),
+    MAIL_FROM=os.getenv("MAIL_FROM", "") or "1epicchou@gmail.com",
     MAIL_PORT=int(os.getenv("MAIL_PORT", 587)),
     MAIL_SERVER=os.getenv("MAIL_HOST", ""),
     MAIL_STARTTLS=True,

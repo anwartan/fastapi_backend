@@ -436,32 +436,34 @@ def updatebelanjapengecekaan(
         "message": "Berhasil update",
         "data": belanja
     }
-# @router.put("/updatestockpengecekaan")
-# def updatestockpengecekaan(
-#     session: SessionDBKafe,
-#     request: UpdateStockPengecekaan,
-#     current_user: Member = Depends(get_current_user)
-# ):
-#     stock = session.exec(
-#         select(Orderstock).where(
-#             Orderstock.IDOrder == request.id,
-#             Orderstock.Jenis == request.jenis
-#         )
-#     ).first()
+@router.delete("/deleteBBorderbycategoryandid/{id}/{category}")
+def delete_bborder_by_category(
+    category: str,
+    id:int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    if category not in ["OB", "OS"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Kategori tidak valid"
+        )
 
-#     if stock is None:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Data tidak ditemukan"
-#         )
+    bborder_to_delete = session.exec(
+        select(Bborder).where(Bborder.Category == category).where(Bborder.IDOrder==id)
+    ).all()
 
-#     stock.JmlhInput = request.jmlhinput
-#     stock.JmlhPengiriman=request.jmlhpengiriman
-#     session.add(stock)
-#     session.commit()
-#     session.refresh(stock)
+    if not bborder_to_delete:
+        raise HTTPException(
+            status_code=404,
+            detail="Tidak ada data untuk dihapus"
+        )
 
-#     return {
-#         "message": "Berhasil update",
-#         "data": stock
-#     }
+    for bborder in bborder_to_delete:
+        session.delete(bborder)
+
+    session.commit()
+
+    return {
+        "message": f"Berhasil menghapus semua data dengan kategori {category}"
+    }
