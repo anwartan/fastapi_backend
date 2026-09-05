@@ -2,6 +2,7 @@ from datetime import date
 import select
 
 from fastapi import APIRouter, Depends, HTTPException
+from requests import session
 from sqlalchemy import Subquery
 from app.auth import get_current_user
 from app.database import SessionDBKafe, SessionDBKafeLogin, get_session
@@ -88,7 +89,7 @@ def get_bborder(session: Session = Depends(get_session),current_user: dict = Dep
 def pengecekaan(
     req: PengecekaanRequest,
     session: SessionDBKafe,
-   # current_user: dict = Depends(get_current_user)
+   current_user: dict = Depends(get_current_user)
 ):
 
     if req.category == "OB":
@@ -104,10 +105,10 @@ def pengecekaan(
     
 
     data = session.exec(query).first()
-    data1=session.exec(
-        select(Bborder).where(Bborder.IDOrder==req.id)
+
+    data1 = session.exec(
+        select(Bborder).where(Bborder.IDOrder == req.id)
     ).first()
-    print(data)
 
     if data is None:
         raise HTTPException(
@@ -115,13 +116,20 @@ def pengecekaan(
             detail="Data tidak ditemukan"
         )
 
-  
-    data.Checked = 1  
-    
+    if data1 is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Bborder tidak ditemukan"
+        )
+
+    data.Checked = 1
+
     data1.Checked = 1
-    data1.Total=req.total
-    session.add(data1)
+    data1.Total = (data1.Total or 0) + req.total
+
     session.add(data)
+    session.add(data1)
+
     session.commit()
     session.refresh(data)
 
