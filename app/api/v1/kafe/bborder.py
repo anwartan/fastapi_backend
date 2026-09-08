@@ -198,7 +198,7 @@ def filterbycategory(
     category:str,
     current_user: Member = Depends(get_current_user)
 ):
-    query=select(Bborder).where(Bborder.Category==category)
+    query=select(Bborder).where(Bborder.Category==category).order_by(Bborder.IDOrder.desc())
     subquery=session.exec(query).all()
     return {
         "data": subquery
