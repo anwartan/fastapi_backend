@@ -37,7 +37,7 @@ logging.basicConfig(
 )
 
 app = FastAPI()
-limiter = RateLimiterStore(max_tokens=20, refill_rate=3, interval=1 .0)
+limiter = RateLimiterStore(max_tokens=20, refill_rate=3, interval=1.0)
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """
