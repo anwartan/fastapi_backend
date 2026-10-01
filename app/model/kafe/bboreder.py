@@ -14,4 +14,6 @@ class Bborder(SQLModel, table=True):
     Checked: bool
     ID_Check: int
     Ket: str
+    PengambilanUang: int
+    PenambahanUang: int
    

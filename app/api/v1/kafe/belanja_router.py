@@ -12,8 +12,11 @@ from app.model.kafe.belanja import Belanja
 from app.model.kafe.bboreder import Bborder
 from app.model.kafe.jnsstock import Jnsstock
 from app.model.kafe.member import Member
-from app.request import belanja_item_request, resetbelanjadetail
+from app.request import  belanja_item_request, resetbelanjadetail
 from app.request import belanjaan_detail_item_request
+from app.request.PenamabahanRequest import PenambahanRequest
+
+from app.request.PengambilanUangRequest import PengambilanUangRequest
 from app.request.create_order_request import CreateOrderRequest
 from datetime import datetime 
 from fastapi.responses import JSONResponse
@@ -59,7 +62,62 @@ def get_by_id(id:int,session: SessionDBKafe,current_user: dict = Depends(get_cur
     else:
         return {"data": result}
     
+@router.put("/updatepenambahanuang")
+def update_penambahan_uang(
+    session: SessionDBKafe,
+    request:PenambahanRequest,
+    current_user: Member = Depends(get_current_user),
+):
+    bbroder = session.exec(
+        select(Bborder).where(Bborder.IDOrder == request.IDOrder)
+    ).first()
 
+    if bbroder is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan."
+        )
+   
+    bbroder.PenambahanUang = request.PenambahanUang
+
+    session.add(bbroder)
+    session.commit()
+    session.refresh(bbroder)
+
+    return {
+        "message": "Penambahan uang berhasil diperbarui",
+        "data": bbroder
+    }
+@router.put("/updatepengambilanuang")
+def update_pengambilan_uang(
+    session: SessionDBKafe,
+    request: PengambilanUangRequest,
+    current_user: Member = Depends(get_current_user),
+):
+    bbroder = session.exec(
+        select(Bborder).where(Bborder.IDOrder == request.id)
+    ).first()
+
+    if bbroder is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Data tidak ditemukan."
+        )
+    if bbroder.PengambilanUang not in (None, 0):
+        raise HTTPException(
+            status_code=400,
+            detail="Pengambilan uang sudah diisi dan tidak dapat diubah."
+        )
+    bbroder.PengambilanUang = request.PengambilanUang
+
+    session.add(bbroder)
+    session.commit()
+    session.refresh(bbroder)
+
+    return {
+        "message": "Pengambilan uang berhasil diperbarui",
+        "data": bbroder
+    }
 @router.post("/create")
 def create(
     session: SessionDBKafe,
@@ -81,7 +139,9 @@ def create(
         Category=order.category,
         Checked=False,
         ID_Check=0,
-        Ket=order.ket
+        Ket=order.ket,
+        PengambilanUang=0,
+        PenambahanUang=0
     )
     session.add(new_order)
 
@@ -388,6 +448,8 @@ def reset_belanjaandetail(
         "message": "Berhasil reset",
         "data": data
     }
+
+
 @router.get("/belanjaandetail/{id}")
 def get_belanjaandetail_by_id(id: int,  session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
     query = select(Belanja).where(Belanja.ID == id, Belanja.Jmlh != 0, Belanja.Price != 0)

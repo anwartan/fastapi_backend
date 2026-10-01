@@ -2,6 +2,7 @@ from datetime import date
 import select
 
 from fastapi import APIRouter, Depends, HTTPException
+from requests import session
 from sqlalchemy import Subquery
 from app.auth import get_current_user
 from app.database import SessionDBKafe, SessionDBKafeLogin, get_session
@@ -88,7 +89,7 @@ def get_bborder(session: Session = Depends(get_session),current_user: dict = Dep
 def pengecekaan(
     req: PengecekaanRequest,
     session: SessionDBKafe,
-   # current_user: dict = Depends(get_current_user)
+   current_user: dict = Depends(get_current_user)
 ):
 
     if req.category == "OB":
@@ -104,10 +105,10 @@ def pengecekaan(
     
 
     data = session.exec(query).first()
-    data1=session.exec(
-        select(Bborder).where(Bborder.IDOrder==req.id)
+
+    data1 = session.exec(
+        select(Bborder).where(Bborder.IDOrder == req.id)
     ).first()
-    print(data)
 
     if data is None:
         raise HTTPException(
@@ -115,13 +116,20 @@ def pengecekaan(
             detail="Data tidak ditemukan"
         )
 
-  
-    data.Checked = 1  
-    
+    if data1 is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Bborder tidak ditemukan"
+        )
+
+    data.Checked = 1
+
     data1.Checked = 1
-    data1.Total=req.total
-    session.add(data1)
+    data1.Total = (data1.Total or 0) + req.total
+
     session.add(data)
+    session.add(data1)
+
     session.commit()
     session.refresh(data)
 
@@ -144,7 +152,26 @@ def get_bborder_by_tanggal(
     )
 
     return {"data": session.exec(query).all()}
+@router.get("/bborder/{id_order}")
+def get_bborder_by_order(
+    id_order: int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user),
+):
+    bborder = session.exec(
+        select(Bborder).where(Bborder.IDOrder == id_order)
+    ).first()
 
+    if bborder is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Order tidak ditemukan"
+        )
+
+    return {
+        "message": "Berhasil",
+        "data": bborder
+    }
 @router.get("/{Category}/{Tanggal}")
 def GetBYCategoryAndTanggal(session:SessionDBKafe, Category:str,Tanggal:str,current_user: dict = Depends(get_current_user)):
     
@@ -171,11 +198,14 @@ def filterbycategory(
     category:str,
     current_user: Member = Depends(get_current_user)
 ):
-    query=select(Bborder).where(Bborder.Category==category)
+    query=select(Bborder).where(Bborder.Category==category).order_by(Bborder.IDOrder.desc())
     subquery=session.exec(query).all()
     return {
         "data": subquery
     }
+
+
+
 @router.get("/{Category}")
 def get(
     session: SessionDBKafe,
@@ -414,32 +444,34 @@ def updatebelanjapengecekaan(
         "message": "Berhasil update",
         "data": belanja
     }
-# @router.put("/updatestockpengecekaan")
-# def updatestockpengecekaan(
-#     session: SessionDBKafe,
-#     request: UpdateStockPengecekaan,
-#     current_user: Member = Depends(get_current_user)
-# ):
-#     stock = session.exec(
-#         select(Orderstock).where(
-#             Orderstock.IDOrder == request.id,
-#             Orderstock.Jenis == request.jenis
-#         )
-#     ).first()
+@router.delete("/deleteBBorderbycategoryandid/{id}/{category}")
+def delete_bborder_by_category(
+    category: str,
+    id:int,
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user)
+):
+    if category not in ["OB", "OS"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Kategori tidak valid"
+        )
 
-#     if stock is None:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Data tidak ditemukan"
-#         )
+    bborder_to_delete = session.exec(
+        select(Bborder).where(Bborder.Category == category).where(Bborder.IDOrder==id)
+    ).all()
 
-#     stock.JmlhInput = request.jmlhinput
-#     stock.JmlhPengiriman=request.jmlhpengiriman
-#     session.add(stock)
-#     session.commit()
-#     session.refresh(stock)
+    if not bborder_to_delete:
+        raise HTTPException(
+            status_code=404,
+            detail="Tidak ada data untuk dihapus"
+        )
 
-#     return {
-#         "message": "Berhasil update",
-#         "data": stock
-#     }
+    for bborder in bborder_to_delete:
+        session.delete(bborder)
+
+    session.commit()
+
+    return {
+        "message": f"Berhasil menghapus semua data dengan kategori {category}"
+    }

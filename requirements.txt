@@ -12,3 +12,4 @@ python-dotenv==1.2.1
 python-jose==3.5.0
 SQLAlchemy==2.0.47
 sqlmodel==0.0.37
+APScheduler==3.11.1
