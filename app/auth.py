@@ -1,13 +1,15 @@
 from datetime import datetime, time, timedelta, timezone
+from multiprocessing import Value
 from typing import Optional
 from fastapi import Depends, HTTPException, status, BackgroundTasks
 from jose import JWTError
 import jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
+from app.model.farm.login import Login
 from app.model.kafe.member import Member
 from sqlmodel import select
-from app.database import SessionDBKafeLogin, get_session_kafe_login
+from app.database import SessionDB1, SessionDBKafeLogin, get_session_kafe_login
 
 SECRET_KEY = "your_secret_key_here"
 ALGORITHM = "HS256"
@@ -64,3 +66,47 @@ def get_current_user(
         )
 
     return user
+
+
+
+def get_current_user_farm(
+    session: SessionDB1,
+    token: str = Depends(oauth2_scheme),
+)-> Member:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+        
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+
+    username: str = payload.get("sub")
+    if username is None:
+        raise credentials_exception
+
+    user = select(Login).where(Login.Username == username)
+    result = session.exec(user).first()
+    if result is None:
+        raise credentials_exception
+    if result.Active == 0:
+        raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Account disabled",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+    
+    return {
+        "User": result.User,
+        "Username": result.Username,
+        "Tingkat": result.Tingkat,
+        "IDMember": result.IDMember,
+        "Active": result.Active,
+        "EmailVerified": result.EmailVerified,
+        "Email": result.Email,
+    }
+

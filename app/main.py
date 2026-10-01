@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.farm import ayamklr_router, ayammini_router, inputprice_router, langsir_router, pickuptelur_router, produksiluar_router, report_router
+from app.api.v1.farm import ayamklr_router, ayammini_router, inputprice_router, isigudang_router, biometric_router as biometric_farm_router, langsir_router, pickuptelur_router, produksiluar_router, report_router, vaksin_router, auth_router as auth_farm_router
+
 from app.api.v1.kafe import biometric_router, notifikasi_router, price_router
 from app.database import test_database_connection
 import logging
@@ -69,6 +70,10 @@ app.include_router(report_router.router, prefix=base_farm_url+"/report", tags=["
 app.include_router(pickuptelur_router.router, prefix=base_farm_url+"/pickuptelur", tags=["Pickuptelur"])
 app.include_router(produksiluar_router.router, prefix=base_farm_url+"/produksiluar", tags=["Produksiluar"])
 app.include_router(inputprice_router.router, prefix=base_farm_url+"/inputprice", tags=["Inputprice"])
+app.include_router(vaksin_router.router, prefix=base_farm_url+"/vaksin", tags=["Vaksin"])
+app.include_router(auth_farm_router.router, prefix=base_farm_url+"/auth", tags=["Auth"])
+app.include_router(isigudang_router.router, prefix=base_farm_url+"/isigudang", tags=["Isigudang"])
+app.include_router(biometric_farm_router.router, prefix=base_farm_url+"/biometric", tags=["Biometric"])
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     logging.error(f"Terjadi kesalahan: {exc}")

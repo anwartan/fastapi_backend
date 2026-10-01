@@ -8,11 +8,12 @@ from sqlalchemy.orm import Session, subqueryload
 from sqlmodel import distinct
 from app.api.v1.farm.request.input_harga_request import InputHargaRequest
 from app.api.v1.kafe import jenisstock_router
+from app.auth import get_current_user_farm
 from app.database import SessionDB1
 from app.model.farm.harga import Harga
 router = APIRouter()
 @router.post("/addharga")
-def add_harga(data: InputHargaRequest, session: SessionDB1):
+def add_harga(data: InputHargaRequest, session: SessionDB1, current_user = Depends(get_current_user_farm)):
     harga = Harga(Tgl=data.tanggal, Harga=data.harga, Jenis=data.jenis)
     session.add(harga)
     session.commit()
@@ -21,7 +22,7 @@ def add_harga(data: InputHargaRequest, session: SessionDB1):
         "message": "Data berhasil disimpan"
     }
 @router.put("/editharga/")
-def edit_harga(data: InputHargaRequest, session: SessionDB1):
+def edit_harga(data: InputHargaRequest, session: SessionDB1, current_user = Depends(get_current_user_farm)):
     edit_harga_query = select(Harga.Jenis, Harga.Harga).where(Harga.Tgl == data.tanggal and Harga.Jenis == data.jenis)
     result = session.exec(edit_harga_query).first()
     if result is None:
@@ -36,7 +37,7 @@ def edit_harga(data: InputHargaRequest, session: SessionDB1):
         "message succesful"
     }
 @router.delete("/deleteharga/")
-def delete_harga(data: InputHargaRequest, session: SessionDB1):
+def delete_harga(data: InputHargaRequest, session: SessionDB1, current_user = Depends(get_current_user_farm)):
     Subquery = select(Harga.Jenis, Harga.Harga).where(Harga.Tgl == data.Tgl and Harga.Jenis == data.Jenis)
     statement = session.exec(Subquery).first()
     if statement is None:
@@ -48,7 +49,7 @@ def delete_harga(data: InputHargaRequest, session: SessionDB1):
         "message berhasil"
     }
 @router.get("/getoption")
-def addharga(session: SessionDB1):
+def addharga(session: SessionDB1, current_user = Depends(get_current_user_farm)):
     option_harga = select(distinct(Harga.Jenis)).order_by(Harga.Tgl.desc())
     result = session.exec(option_harga).all()
     return [

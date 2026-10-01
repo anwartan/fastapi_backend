@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, Integer
+
 
 class Telurklr(SQLModel, table=True):
     __tablename__ = "telurklr"
