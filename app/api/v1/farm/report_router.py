@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends
 from requests import session
-from sqlalchemy import Integer, Subquery, func, literal, desc, null
+from sqlalchemy import Integer, func, literal, desc
 from datetime import datetime
-from sqlalchemy.orm import sessionmaker
 from app.auth import get_current_user_farm
 from app.database import SessionDB1
 from app.model.farm.TempLangsirMkn import TempLangsirMkn
@@ -10,7 +9,6 @@ from app.model.farm.TempJmlhAyam import TempJmlhAyam
 from app.model.farm.ayam import Ayam
 from app.model.farm.ayamklr import Ayamklr
 from app.model.farm.ayammini import Ayammini
-from app.model.farm.datakandang import Datakandang
 from app.model.farm.harga import Harga
 from app.model.farm.mskanakayam import Mskanakayam
 from app.model.farm.telurklr import Telurklr

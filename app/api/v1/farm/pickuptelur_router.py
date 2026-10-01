@@ -5,7 +5,6 @@ from app.auth import get_current_user_farm
 from app.database import SessionDB1
 from app.model.farm.ayam import Ayam
 from app.model.farm.TempPickupTelur import TempPickUpTelur
-from app.request.pickuptelur_request import Pickuptelurrequest
 from app.request.create_pickuptelur_request import Createpickuptelurrequest
 from sqlmodel import select
 

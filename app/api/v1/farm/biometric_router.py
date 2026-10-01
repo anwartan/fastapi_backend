@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends
 
-from app.api.v1.farm.farm_service.BiometricService import BiometricService, BiometricServiceInstance
+from app.api.v1.farm.farm_service.BiometricService import  BiometricServiceInstance
 from app.api.v1.farm.request.biometric_request import BiometricRegisterRequest
 from app.api.v1.farm.request.biometric_request import BiometricLoginRequest
 from app.auth import create_access_token, get_current_user_farm

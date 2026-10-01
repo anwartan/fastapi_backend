@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends
-from requests import session
 from sqlmodel import select
 
 from app.auth import get_current_user_farm

@@ -1,19 +1,18 @@
 from datetime import datetime , timedelta
 import hashlib
 import hmac
-from operator import is_
 import random
 import string
 from typing import Annotated
 
 from fastapi import Depends
-from regex import F
-from sqlalchemy.orm import sessionmaker
+
+
 from sqlmodel import select
 
 from app.database import SessionDB1
 from app.model.farm.login import Login
-from app.services.otp_service import OtpService, OtpServiceInstance
+
 
 
 

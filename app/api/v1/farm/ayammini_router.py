@@ -1,12 +1,12 @@
 import select
-from unittest import result
 
-from fastapi import APIRouter, Depends, Query
+
+from fastapi import APIRouter, Depends
 from app.auth import get_current_user_farm
 from app.database import SessionDB1
-from app.model.farm import ayammini
+
 from app.model.farm.ayammini import Ayammini
-from app.model.farm.ayam import Ayam
+
 from sqlmodel import select, func
 
 router = APIRouter()

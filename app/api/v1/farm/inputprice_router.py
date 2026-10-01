@@ -1,13 +1,8 @@
-
-from pydoc import text
-from unittest import result
-
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import Subquery, select
-from sqlalchemy.orm import Session, subqueryload
+from sqlalchemy import select
+
 from sqlmodel import distinct
 from app.api.v1.farm.request.input_harga_request import InputHargaRequest
-from app.api.v1.kafe import jenisstock_router
 from app.auth import get_current_user_farm
 from app.database import SessionDB1
 from app.model.farm.harga import Harga

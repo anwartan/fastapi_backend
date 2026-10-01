@@ -1,8 +1,5 @@
 from datetime import datetime
-from re import L
-from sys import exception
-from typing import Annotated, Self
-from unittest.mock import AsyncMagicMixin
+
 
 from fastapi import Depends
 from fastapi.templating import Jinja2Templates
@@ -15,7 +12,6 @@ from app.database import SessionDB1
 
 from app.mail_farm import MailFarm
 from app.model.farm.login import Login
-from app.model.kafe.member import Member
 
 
 
