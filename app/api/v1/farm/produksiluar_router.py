@@ -1,124 +1,143 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlmodel import select, func
 
-from app.auth import get_current_user_farm
 from app.database import SessionDB1
-
 from app.model.farm.TempPickTelur import TempPickTelur
+from app.model.farm.ayam import Ayam
 from app.model.farm.telurklr import Telurklr
-
+from app.model.farm.telurpro import Telurpro
 
 router = APIRouter()
-def to_butir(ikat, papan, butir):
-    return (
-        (ikat * 300)
-        + (papan * 30)
-        + butir
-    )
-def from_butir(total):
-    if total < 0:
-        total = 0
 
-    ikat = total // 300
-    total = total % 300
 
-    papan = total // 30
-    butir = total % 30
-
-    return {
-        "ikat": ikat,
-        "papan": papan,
-        "butir": butir,
-    }
 @router.get("/layerluar/{date}")
-def get_gudang(
-    session: SessionDB1,
-    date: str,
-    current_user=Depends(get_current_user_farm),
-):
-    telur_masuk = session.exec(
+def getlayerluar(session: SessionDB1, date: str):
+    telur_hari_ini = session.exec(
+        select(Telurpro).where(Telurpro.Tgl == date)
+    ).all()
+
+    for item in telur_hari_ini:
+        print(item)
+    pickup_hari_ini = session.exec(
+        select(TempPickTelur).where(TempPickTelur.Tgl == date)
+    ).all()
+
+    for item in pickup_hari_ini:
+        print(item)
+    layerpro = (
+        select(
+            Ayam.Jenisayam,
+            func.coalesce(func.sum(Telurpro.Jmlh), 0).label("jumlah")
+        )
+        .join(Ayam, Ayam.ID == Telurpro.ID)
+        .where(Telurpro.Tgl == date)
+        .group_by(Ayam.Jenisayam)
+    )
+    statement = session.exec(layerpro).all()
+
+    statementtelur = []
+
+    for row in statement:
+        statementtelur.append({
+            "jenisayam": row[0],
+            "jumlah": row[1],
+        })
+
+  
+    telurpickup = (
         select(
             TempPickTelur.Jenisayam,
-            func.coalesce(
-                func.sum(TempPickTelur.Ikat),
-                0
-            ),
-            func.coalesce(
-                func.sum(TempPickTelur.Ppn),
-                0
-            ),
-            func.coalesce(
-                func.sum(TempPickTelur.Butir),
-                0
-            ),
+            TempPickTelur.Tipe,
+            func.coalesce(func.sum(TempPickTelur.Ikat), 0),
+            func.coalesce(func.sum(TempPickTelur.Ppn), 0),
+            func.coalesce(func.sum(TempPickTelur.Butir), 0),
         )
-        .where(
-            TempPickTelur.Tgl <= date
-        )
+        .where(TempPickTelur.Tgl == date)
         .group_by(
-            TempPickTelur.Jenisayam
+            TempPickTelur.Jenisayam,
+            TempPickTelur.Tipe,
         )
-    ).all()
-    telur_keluar = session.exec(
-        select(
-            Telurklr.JenisTelur,
-            func.coalesce(
-                func.sum(Telurklr.Jmlh),
-                0
-            ),
-        )
-        .where(
-            Telurklr.Tgl <= date
-        )
-        .group_by(
-            Telurklr.JenisTelur
-        )
-    ).all()
-    keluar_dict = {}
+    )
 
-    for row in telur_keluar:
+    statementpick = session.exec(telurpickup).all()
 
-        jenisayam = row[0]
-        jumlah = row[1] or 0
+    statementpickresult = []
 
-        keluar_dict[jenisayam] = jumlah
-    result = []
-
-    for row in telur_masuk:
-
-        jenisayam = row[0]
-
-        masuk_ikat = row[1] or 0
-        masuk_papan = row[2] or 0
-        masuk_butir = row[3] or 0
-
-        total_masuk = to_butir(
-            masuk_ikat,
-            masuk_papan,
-            masuk_butir,
-        )
-
-        total_keluar = keluar_dict.get(
-            jenisayam,
-            0
-        )
-        total_sisa = total_masuk - total_keluar
-
-        if total_sisa < 0:
-            total_sisa = 0
-
-        stock = from_butir(total_sisa)
-
-        result.append({
-            "jenisayam": jenisayam,
-
-            "ikat": stock["ikat"],
-            "papan": stock["papan"],
-            "butir": stock["butir"],
-
-            "total_butir": total_sisa,
+    for row in statementpick:
+        statementpickresult.append({
+            "jenisayam": row[0],
+            "tipe": row[1],
+            "ikat": row[2],
+            "papan": row[3],
+            "butir": row[4],
         })
+
+  
+    lastDist = session.exec(
+        select(func.max(TempPickTelur.Dist))
+        .where(TempPickTelur.Tgl == date)
+    ).one()
+
+    print("LAST DIST :", lastDist)
+
+    lastpickupresult = []
+
+    if lastDist is not None:
+
+        lastpickup = (
+            select(
+                TempPickTelur.Jenisayam,
+                func.coalesce(func.sum(TempPickTelur.Ikat), 0),
+                func.coalesce(func.sum(TempPickTelur.Ppn), 0),
+                func.coalesce(func.sum(TempPickTelur.Butir), 0),
+            )
+            .where(
+                TempPickTelur.Tgl == date,
+            )
+            .group_by(
+                TempPickTelur.Jenisayam,
+            )
+        )
+
+        keluar = (
+            select(
+              func.coalesce(func.sum(Telurklr.Jmlh),0),Telurklr.JenisTelur
+            ).where(Telurklr.Tgl == date).group_by(Telurklr.JenisTelur)
+        )
+        ambillast = session.exec(keluar).all()
+        statementlast = session.exec(lastpickup).all()
+        for msk in statementlast:
+            jenisayam = msk[0]
+            masukikat = int(msk[1])
+            masukppn = int(msk[2])
+            masukbtr = int(msk[3])
+            totalmasuk = (
+                (masukikat * 300)
+                + (masukppn * 30)
+                + masukbtr
+            )
+            for klr in ambillast:
+                jenisklr = klr[1]
+                jmlhklr = klr[0]
+                if(jenisklr == jenisayam):
+                    totalsisa = totalmasuk - jmlhklr
+                    if(totalsisa < 0):
+                        totalsisa = 0
+                    
+                    
+                    lastpickupresult.append({
+                        "jenisayam": row[0],
+                        "ikat": totalsisa//300,
+                        "papan": (totalsisa%300 )//30,
+                        "butir": (totalsisa%300 )%30,
+                    })
+                    break
+
     return {
-        "date": date,
-        "stock": result,
+        "total_pro": statementtelur,
+        "total_pickup": statementpickresult,
+        "last_pickup": lastpickupresult,
     }
+def getupdatehariini(session: SessionDB1, date:str):
+    updatehariini = select(TempPickTelur).where(TempPickTelur.Tgl == date)
+    result = session.exec(result).all()
