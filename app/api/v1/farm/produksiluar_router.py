@@ -15,15 +15,9 @@ def getlayerluar(session: SessionDB1, date: str):
     telur_hari_ini = session.exec(
         select(Telurpro).where(Telurpro.Tgl == date)
     ).all()
-
-    for item in telur_hari_ini:
-        print(item)
     pickup_hari_ini = session.exec(
         select(TempPickTelur).where(TempPickTelur.Tgl == date)
     ).all()
-
-    for item in pickup_hari_ini:
-        print(item)
     layerpro = (
         select(
             Ayam.Jenisayam,
@@ -87,6 +81,7 @@ def getlayerluar(session: SessionDB1, date: str):
         lastpickup = (
             select(
                 TempPickTelur.Jenisayam,
+                TempPickTelur.Tipe,
                 func.coalesce(func.sum(TempPickTelur.Ikat), 0),
                 func.coalesce(func.sum(TempPickTelur.Ppn), 0),
                 func.coalesce(func.sum(TempPickTelur.Butir), 0),
@@ -108,9 +103,10 @@ def getlayerluar(session: SessionDB1, date: str):
         statementlast = session.exec(lastpickup).all()
         for msk in statementlast:
             jenisayam = msk[0]
-            masukikat = int(msk[1])
-            masukppn = int(msk[2])
-            masukbtr = int(msk[3])
+            tipe = msk[1]
+            masukikat = int(msk[2])
+            masukppn = int(msk[3])
+            masukbtr = int(msk[4])
             totalmasuk = (
                 (masukikat * 300)
                 + (masukppn * 30)
@@ -127,6 +123,7 @@ def getlayerluar(session: SessionDB1, date: str):
                     
                     lastpickupresult.append({
                         "jenisayam": row[0],
+                        "tipe": row[1],
                         "ikat": totalsisa//300,
                         "papan": (totalsisa%300 )//30,
                         "butir": (totalsisa%300 )%30,
