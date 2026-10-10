@@ -25,7 +25,6 @@ from app.api.v1.kafe.notifikasi_router import router as notifikasi_router
 from app.api.v1.kafe.auto_update_router import router as auto_update_router
 from app.api.v1.kafe.laporanperitem import router as laporanperitem
 from app.api.v1.kafe.payrol import router as payrol
-from app.api.v1.kafe.AIVisionRouter import router as openaivision
 from app.database import test_database_connection
 from app.ratelimiter import RateLimiterStore
 import logging
