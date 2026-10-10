@@ -106,7 +106,6 @@ app.include_router(auto_update_router,prefix=base_kafe_url+"/update",tags=["upda
 app.include_router(laporanperitem, prefix=base_kafe_url+"/laporanperitem", tags=["laporanperitem"])
 app.include_router(payrol, prefix=base_kafe_url+"/payrol", tags=["payrol"])
 app.include_router(testing_router,prefix=base_kafe_url+"/testing",tags=['testing'])
-app.include_router(openaivision, prefix=base_kafe_url+"/ai_vision_router", tags=["ai_vision_router"])
 base_farm_url = base_url + "/farm"
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])
 app.include_router(ayamklr_router.router, prefix=base_farm_url+"/ayamklr", tags=["Ayamklr"])
