@@ -1,15 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from requests import session
-from sqlalchemy import Integer, Subquery, func, literal, desc, null
+from sqlalchemy import Integer, func, literal, desc
 from datetime import datetime
-from sqlalchemy.orm import sessionmaker
+from app.auth import get_current_user_farm
 from app.database import SessionDB1
 from app.model.farm.TempLangsirMkn import TempLangsirMkn
 from app.model.farm.TempJmlhAyam import TempJmlhAyam
 from app.model.farm.ayam import Ayam
 from app.model.farm.ayamklr import Ayamklr
 from app.model.farm.ayammini import Ayammini
-from app.model.farm.datakandang import Datakandang
 from app.model.farm.harga import Harga
 from app.model.farm.mskanakayam import Mskanakayam
 from app.model.farm.telurklr import Telurklr
@@ -22,7 +21,7 @@ from app.model.farm.telursisa import Telursisa
 from app.model.farm.telursisaarab import Telursisaarab
 router = APIRouter()
 @router.get("/hargaluar")
-def hargaluar(session: SessionDB1):
+def hargaluar(session: SessionDB1, current_user = Depends(get_current_user_farm)):
     now = datetime.now().date()
     statement_egg = select(Harga.Tgl,Harga.Jenis, Harga.Harga).where(Harga.Jenis == "Telur").order_by(Harga.Tgl.desc()).limit(2)
     statement_egg_limit = session.exec(statement_egg).all()
@@ -69,7 +68,7 @@ def hargaluar(session: SessionDB1):
     }
  
 @router.get("/sisaproluar/{date}")
-def sisaproluar(session: SessionDB1, date:str):
+def sisaproluar(session: SessionDB1, date:str, current_user = Depends(get_current_user_farm)):
     layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
     data__layer = session.exec(layer_statement).first()
     jmlh_lap_layer = 0 
@@ -103,7 +102,7 @@ def sisaproluar(session: SessionDB1, date:str):
         ]
     }
 @router.get("/langsirmkn/{date}")
-def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str = None):
+def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str = None, current_user = Depends(get_current_user_farm)):
     statement = select(TempLangsirMkn.Dist, TempLangsirMkn.Kandang, TempLangsirMkn.JenisMkn, TempLangsirMkn.Goni, TempLangsirMkn.Kg, TempLangsirMkn.Input).where(TempLangsirMkn.Tgl == date)
     if dist is not None :
         statement = statement.where(TempLangsirMkn.Dist == dist)
@@ -125,7 +124,7 @@ def langsirmkn(session: SessionDB1, date : str, dist : str = None, kandang : str
     }
     
 @router.get("/langsirtelur/{date}")
-def langsirtelur(session: SessionDB1, date = str,  dist : str = None, kandang : str = None):
+def langsirtelur(session: SessionDB1, date = str,  dist : str = None, kandang : str = None, current_user = Depends(get_current_user_farm)):
     statement = select(
         Ayam.Indexing.label("Kandang_ID"),
         TempPickTelur.Dist, 
@@ -160,8 +159,9 @@ def langsirtelur(session: SessionDB1, date = str,  dist : str = None, kandang : 
             for item in results
         ]
     }
+    
 @router.get("/telur-klr/{date}")
-def telurklrlayer(session: SessionDB1, date: str):
+def telurklrlayer(session: SessionDB1, date: str, current_user = Depends(get_current_user_farm)):
     statement = select(
         Telurklr.Nama,
         Telurklr.Jmlh,
@@ -183,8 +183,9 @@ def telurklrlayer(session: SessionDB1, date: str):
             for item in data
         ]
     }
+    
 @router.get("/sisa-telur/{date}")
-def telursisalayer(session: SessionDB1, date:str):
+def telursisalayer(session: SessionDB1, date:str, current_user = Depends(get_current_user_farm)):
     layer_statement = select(Telursisa.JmlhLap, Telursisa.JmlhMlm).where(Telursisa.Tgl == date)
     data__layer = session.exec(layer_statement).first()
     arab_statement = select(Telursisaarab.JmlhLap, Telursisaarab.JmlhMlm).where(Telursisaarab.Tgl == date)
@@ -203,35 +204,51 @@ def telursisalayer(session: SessionDB1, date:str):
             }
         ]
     }
+    
 @router.get("/harga/range")
-def harga_by_range(session: SessionDB1, start_date: str | None = None, end_date: str | None = None):
+def harga_by_range(
+    session: SessionDB1, 
+    search: str = "", 
+    start_date: str | None = None, 
+    end_date: str | None = None,
+    current_user = Depends(get_current_user_farm)
+):
     print(f"Received: start_date={start_date}, end_date={end_date}")
 
-    subquery_query = select(Harga.Jenis, func.max(Harga.Tgl).label("max_tgl"))
+    if search:
+        statement = (
+            select(Harga.Harga, Harga.Jenis, Harga.Tgl)
+            .where(func.lower(Harga.Jenis) == search.lower())
+            .order_by(Harga.Tgl.desc())
+        )
+    else:
+       
+        subquery_query = select(Harga.Jenis, func.max(Harga.Tgl).label("max_tgl"))
 
-    if start_date is not None:
-        subquery_query = subquery_query.where(Harga.Tgl >= start_date)
-    if end_date is not None:
-        subquery_query = subquery_query.where(Harga.Tgl <= end_date)
+        if start_date is not None:
+            subquery_query = subquery_query.where(Harga.Tgl >= start_date)
+        if end_date is not None:
+            subquery_query = subquery_query.where(Harga.Tgl <= end_date)
 
-    subquery = subquery_query.group_by(Harga.Jenis).subquery()
+        subquery = subquery_query.group_by(Harga.Jenis).subquery()
 
-    statement = (
-        select(Harga.Harga, Harga.Jenis, Harga.Tgl)
-        .join(subquery, (Harga.Jenis == subquery.c.Jenis) & (Harga.Tgl == subquery.c.max_tgl))
-        .order_by(Harga.Tgl.desc())
-    )
+        statement = (
+            select(Harga.Harga, Harga.Jenis, Harga.Tgl)
+            .join(subquery, (Harga.Jenis == subquery.c.Jenis) & (Harga.Tgl == subquery.c.max_tgl))
+            .order_by(Harga.Tgl.desc())
+        )
 
     result = session.exec(statement).all()
-    print(f"Result count: {len(result)}")
     return [{"Harga": r.Harga, "Jenis": r.Jenis, "Tgl": str(r.Tgl)} for r in result]
+
 @router.get("/hargainput/{date}")
-def inputharga(session: SessionDB1, date:str):
+def inputharga(session: SessionDB1, date:str, current_user = Depends(get_current_user_farm)):
     Subquery = select(Harga.Jenis).where(Harga.Tgl == date)
     result = session.exec(Subquery).all()
     return result
+
 @router.get("/{date}")
-def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang"):
+def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang", current_user = Depends(get_current_user_farm)):
     print("date", date)
     print("filter", filter)
     ayammini_sub_query = select(Mskanakayam.TglMsk, literal("Mini A").label("Kandang"),Ayammini.Jmlh, literal("0").cast(Integer).label("Jmlh"), literal("0").cast(Integer).label("persen"),Ayammini.JenisAyam.label("Jenisayam"), literal("0").cast(Integer).label("Indexing"),literal("0").cast(Integer).label("ID") ).join(Ayammini, Ayammini.ID_kcl == Mskanakayam.ID).order_by(desc(Ayammini.Tgl)).limit(1)   

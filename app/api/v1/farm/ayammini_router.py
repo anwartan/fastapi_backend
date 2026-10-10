@@ -1,22 +1,23 @@
 import select
-from unittest import result
 
-from fastapi import APIRouter, Query
+
+from fastapi import APIRouter, Depends
+from app.auth import get_current_user_farm
 from app.database import SessionDB1
-from app.model.farm import ayammini
+
 from app.model.farm.ayammini import Ayammini
-from app.model.farm.ayam import Ayam
+
 from sqlmodel import select, func
 
 router = APIRouter()
 
 @router.post("/")
-def create(ayammini: Ayammini, session:SessionDB1):
+def create(ayammini: Ayammini, session:SessionDB1, current_user = Depends(get_current_user_farm)):
 
     
     return {"message": "Ayammini created success"}
 @router.get("/")
-def get(session:SessionDB1, limit: int = 10, offset: int = 0):
+def get(session:SessionDB1, limit: int = 10, offset: int = 0, current_user = Depends(get_current_user_farm)):
     query = select(Ayammini).limit(limit).offset(offset)
     result = session.exec(query).all()
 
@@ -32,7 +33,7 @@ def get(session:SessionDB1, limit: int = 10, offset: int = 0):
         }
     }
 @router.get("/{id}")
-def getbyid(session:SessionDB1, id:int):
+def getbyid(session:SessionDB1, id:int, current_user = Depends(get_current_user_farm)):
     Query = select(Ayammini).where(Ayammini.ID == id)
     result = session.exec(Query).first()
     if result is None:
@@ -42,8 +43,8 @@ def getbyid(session:SessionDB1, id:int):
             "data":result
         }
 @router.put("/")
-def update(ayammini: Ayammini, session:SessionDB1):
+def update(ayammini: Ayammini, session:SessionDB1, current_user = Depends(get_current_user_farm)):
     return {"message": "Ayammini updated success"}
 @router.delete("/")
-def delete(ayammini: Ayammini, session:SessionDB1):
+def delete(ayammini: Ayammini, session:SessionDB1, current_user = Depends(get_current_user_farm)):
     return {"message": "Ayammini deleted success"}
