@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.auth import get_current_user
 from app.database import SessionDBKafeLogin
@@ -8,7 +8,40 @@ from app.model.kafe.member import Member
 
 
 router = APIRouter()
+@router.get("/terbaru")
+def get_dailybill_terbaru(
+    session: SessionDBKafeLogin,
+):
+    tanggal_terbaru = session.exec(
+        select(func.max(dailybill.Tgl))
+    ).first()
 
+    if not tanggal_terbaru:
+        return {
+            "status": "success",
+            "data": [],
+        }
+
+    query = (
+        select(dailybill, Member.Nama)
+        .join(Member, Member.ID == dailybill.ID)
+        .where(dailybill.Tgl == tanggal_terbaru)
+        .order_by(dailybill.IDDailyBill.desc())
+    )
+
+    results = session.exec(query).all()
+
+    return {
+        "status": "success",
+        "tanggal": tanggal_terbaru,
+        "data": [
+            {
+                **bill.model_dump(),
+                "Nama": nama,
+            }
+            for bill, nama in results
+        ],
+    }
 
 @router.get("/tanggal/{id}/{tanggalawal}/{tanggalakhir}")
 def get_dailybillbytanggal(

@@ -24,6 +24,7 @@ from app.api.v1.kafe.biometric_router import router as biometric_router
 from app.api.v1.kafe.notifikasi_router import router as notifikasi_router
 from app.api.v1.kafe.auto_update_router import router as auto_update_router
 from app.api.v1.kafe.laporanperitem import router as laporanperitem
+from app.api.v1.kafe.payrol import router as payrol
 from app.database import test_database_connection
 from app.ratelimiter import RateLimiterStore
 import logging
@@ -103,7 +104,7 @@ app.include_router(biometric_router,prefix=base_kafe_url+"/biometric",tags=["bio
 app.include_router(notifikasi_router,prefix=base_kafe_url+"/notifikasi",tags=["notifikasi"])
 app.include_router(auto_update_router,prefix=base_kafe_url+"/update",tags=["update"])
 app.include_router(laporanperitem, prefix=base_kafe_url+"/laporanperitem", tags=["laporanperitem"])
-app.include_router(payrol.router, prefix=base_kafe_url+"/payrol", tags=["payrol"])
+app.include_router(payrol, prefix=base_kafe_url+"/payrol", tags=["payrol"])
 app.include_router(testing_router,prefix=base_kafe_url+"/testing",tags=['testing'])
 base_farm_url = base_url + "/farm"
 app.include_router(ayammini_router.router, prefix=base_farm_url+"/ayammini", tags=["Ayammini"])

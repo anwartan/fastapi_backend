@@ -23,8 +23,8 @@ def create(jnsstock: Jnsstock, session: SessionDBKafe,current_user: dict = Depen
     return {"message": "jenis stock created successfully"}
 
 @router.get("/")
-def get(session: SessionDBKafe,search: str = None,limit: int = 10, offset: int = 0,current_user: dict = Depends(get_current_user)):
-    query = select(Jnsstock).offset(offset).limit(limit)
+def get(session: SessionDBKafe,search: str = None,current_user: dict = Depends(get_current_user)):
+    query = select(Jnsstock)
     if search:
         query = query.where(Jnsstock.Jenis.like(f"%{search}%"))
     results = session.exec(query).all()
@@ -34,9 +34,8 @@ def get(session: SessionDBKafe,search: str = None,limit: int = 10, offset: int =
     total = session.exec(query_total).first()
     return {"data": results,
             "paging": {
-                "limit": limit,
-                "offset": offset,
-                "total": total
+                
+               
             }}
 @router.get("/{jenis}")
 def get_by_jenis(jenis: str, session: SessionDBKafe,current_user: dict = Depends(get_current_user)):
