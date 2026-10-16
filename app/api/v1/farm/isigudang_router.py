@@ -22,10 +22,6 @@ current_user=Depends(get_current_user_farm),
     date_obj = datetime.strptime(date, "%Y-%m-%d").date()
     yesterday = date_obj - timedelta(days=1)
 
-
-    # ==========================================
-    # 1. Ambil jumlah telur masuk per jenis ayam
-    # ==========================================
     temp_statement = (
         select(
             TempPickTelur.Jenisayam,
@@ -56,9 +52,6 @@ current_user=Depends(get_current_user_farm),
         elif jenisayam == "arab":
             total_arab_masuk += jumlah
 
-    # ==========================================
-    # 2. Ambil stok gudang pada tanggal tersebut
-    # ==========================================
     telursisa_statement = select(Telursisa).where(
         Telursisa.Tgl == date_obj
     )
@@ -67,9 +60,6 @@ current_user=Depends(get_current_user_farm),
         telursisa_statement
     ).first()
 
-    # ==========================================
-    # 3. Ambil total stok gudang hari sebelumnya
-    # ==========================================
     sisa_statement = select(
         func.coalesce(
             func.sum(Telursisa.JmlhLap),
@@ -83,9 +73,7 @@ current_user=Depends(get_current_user_farm),
         sisa_statement
     ).first() or 0
 
-    # ==========================================
-    # 4. Ambil total telur keluar hari ini
-    # ==========================================
+
     keluar_statement = select(
         func.coalesce(
             func.sum(Telurklr.Jmlh),
@@ -99,9 +87,6 @@ current_user=Depends(get_current_user_farm),
         keluar_statement
     ).first() or 0
 
-    # ==========================================
-    # 5. Hitung total stok gudang
-    # ==========================================
     if result_telursisa is not None:
         total_gudang = int(
             result_telursisa.JmlhLap or 0
@@ -115,9 +100,6 @@ current_user=Depends(get_current_user_farm),
             - int(result_keluar),
         )
 
-    # ==========================================
-    # 6. Kembalikan data Layer dan Arab
-    # ==========================================
     return {
         "data": {
             "layer": total_layer_masuk,

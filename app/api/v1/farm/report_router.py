@@ -247,7 +247,7 @@ def inputharga(session: SessionDB1, date:str, current_user = Depends(get_current
     result = session.exec(Subquery).all()
     return result
 
-@router.get("/{date}")
+@router.get("/{date}/{filter}")
 def reportayamperhari(session: SessionDB1, date:str, filter: str = "kandang", current_user = Depends(get_current_user_farm)):
     print("date", date)
     print("filter", filter)
