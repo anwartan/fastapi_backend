@@ -11,7 +11,7 @@ from sqlmodel import select
 
 router = APIRouter()
 @router.get("/option")
-def getOption(session:SessionDB1, current_user = Depends(get_current_user_farm)):
+def getOption(session:SessionDB1):
     getkandang_qury= select(Ayam.Kandang, Ayam.Jenisayam).order_by(Ayam.Kandang.desc())
     data_kandang = session.exec(getkandang_qury).all()
     
