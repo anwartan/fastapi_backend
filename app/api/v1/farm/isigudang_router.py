@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlmodel import select
-
 
 from app.auth import get_current_user_farm
 from app.database import SessionDB1
@@ -12,89 +10,101 @@ from app.model.farm.TempPickTelur import TempPickTelur
 from app.model.farm.telurklr import Telurklr
 from app.model.farm.telursisa import Telursisa
 
-
 router = APIRouter()
 
-
 @router.get("/gudangisi/{date}")
-def isigudang(session: SessionDB1, date: str, current_user = Depends(get_current_user_farm)):
-
-    telursisa_statemeny = select(Telursisa).where(
-        Telursisa.Tgl == date 
-    )
-
-    result_telursisa = session.exec(
-        telursisa_statemeny
-    ).first()
-
-    date_obj = datetime.strptime(
-        date,
-        "%Y-%m-%d"
-    ).date()
+def isigudang(
+session: SessionDB1,
+date: str,
+current_user=Depends(get_current_user_farm),
+):
+    
+    date_obj = datetime.strptime(date, "%Y-%m-%d").date()
     yesterday = date_obj - timedelta(days=1)
-    if result_telursisa is None:
-        temppicktelur_state = select(
+
+    temp_statement = (
+        select(
+            TempPickTelur.Jenisayam,
             func.coalesce(
                 func.sum(
                     (TempPickTelur.Ikat * 360)
                     + (TempPickTelur.Ppn * 30)
                     + TempPickTelur.Butir
                 ),
-                0
-            )
-        ).where(
-            TempPickTelur.Tgl == date_obj
-        ).group_by(TempPickTelur.Tipe)
-
-        result_temp = session.exec(
-            temppicktelur_state
-        ).first()
-
-        sisasemalam_state = select(
-            func.coalesce(
-                Telursisa.JmlhLap,
-                0
-            )
-        ).where(
-            Telursisa.Tgl == yesterday
+                0,
+            ).label("jumlahtelur"),
         )
+        .where(TempPickTelur.Tgl == date_obj)
+        .group_by(TempPickTelur.Jenisayam)
+    )
 
-        result_sisamalam = session.exec(
-            sisasemalam_state
-        ).first()
+    result_temp = session.exec(temp_statement).all()
 
-        keluar_state = select(
-            func.coalesce(
-                func.sum(Telurklr.Jmlh),
-                0
-            )
-        ).where(
-            Telurklr.Tgl == date_obj
+    total_layer_masuk = 0
+    total_arab_masuk = 0
+
+    for row in result_temp:
+        jenisayam = str(row[0]).strip().lower()
+        jumlah = int(row[1] or 0)
+
+        if jenisayam == "layer":
+            total_layer_masuk += jumlah
+        elif jenisayam == "arab":
+            total_arab_masuk += jumlah
+
+    telursisa_statement = select(Telursisa).where(
+        Telursisa.Tgl == date_obj
+    )
+
+    result_telursisa = session.exec(
+        telursisa_statement
+    ).first()
+
+    sisa_statement = select(
+        func.coalesce(
+            func.sum(Telursisa.JmlhLap),
+            0,
         )
+    ).where(
+        Telursisa.Tgl == yesterday
+    )
 
-        result_keluar = session.exec(
-            keluar_state
-        ).first()
-        tipe_statement = select(TempPickTelur).where(TempPickTelur.Tipe == "Layer" & TempPickTelur.Tipe == "Arab")
-        result_tipe = session.exec(tipe_statement).first()
-        print("hai", result_temp)
-        print("halo", result_sisamalam)
-        print("hi", result_keluar)
+    result_sisamalam = session.exec(
+        sisa_statement
+    ).first() or 0
 
-        return {
-            "data": {
-                "jumlahtelur": (
-                    result_temp
-                    + result_sisamalam
-                    - result_keluar
-                )
-            }
-        }
 
+    keluar_statement = select(
+        func.coalesce(
+            func.sum(Telurklr.Jmlh),
+            0,
+        )
+    ).where(
+        Telurklr.Tgl == date_obj
+    )
+
+    result_keluar = session.exec(
+        keluar_statement
+    ).first() or 0
+
+    if result_telursisa is not None:
+        total_gudang = int(
+            result_telursisa.JmlhLap or 0
+        )
     else:
+        total_gudang = max(
+            0,
+            total_layer_masuk
+            + total_arab_masuk
+            + int(result_sisamalam)
+            - int(result_keluar),
+        )
 
-        return {
-            "data": {
-                "jumlahtelur": result_telursisa.JmlhLap
-            }
+    return {
+        "data": {
+            "layer": total_layer_masuk,
+            "arab": total_arab_masuk,
+            "totalgudang": total_gudang,
         }
+    }
+

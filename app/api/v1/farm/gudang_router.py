@@ -13,4 +13,3 @@ def getgudang(session: SessionDB1, date:str, current_user = Depends(get_current_
     gudang_subquery = select(Telursisa).where(Telursisa.Tgl == date)
     result = session.exec(gudang_subquery).first()
     return result
-    
