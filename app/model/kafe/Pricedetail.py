@@ -8,5 +8,5 @@ class Pricedetail(SQLModel, table=True):
     ID_PriceDetail:int = Field(default=None, primary_key=True)
     Tgl: date=Field(default=None)
     Jenis: str=Field(default=None)
-    Jmlh: int=Field(default=None)
+    Jmlh: float=Field(default=None)
     Inputer: int=Field(default=None)
