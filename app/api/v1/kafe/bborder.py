@@ -148,6 +148,7 @@ def get_by_tanggal(
     query = (
         select(Bborder)
         .where(Bborder.Tgl == tanggal)
+        .where(Bborder.Checked == 0)
         .order_by(Bborder.IDOrder.desc())
     )
 
