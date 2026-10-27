@@ -34,7 +34,8 @@ def get_all(
 
     return {
         "data": results
-    }   
+    }  
+
 @router.get("/getallchecked")
 def get_all_checked(
     session: SessionDBKafe,
@@ -137,7 +138,24 @@ def pengecekaan(
         "message": "Berhasil update",
         "data": data
     }
+@router.get("/getbytanggal/{tanggal}")
+def get_by_tanggal(
+    tanggal: date,
+    session: SessionDBKafe,
+    current_user: dict = Depends(get_current_user)
+):
+ 
+    query = (
+        select(Bborder)
+        .where(Bborder.Tgl == tanggal)
+        .order_by(Bborder.IDOrder.desc())
+    )
 
+    results = session.exec(query).all()
+
+    return {
+        "data": results
+    }
 @router.get("/{tanggal}/tanggal/checked")
 def get_bborder_by_tanggal(
     tanggal: date,
