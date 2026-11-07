@@ -1,3 +1,4 @@
+from re import I
 import select
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks,File,UploadFile, Depends
@@ -17,6 +18,7 @@ from app.request import belanjaan_detail_item_request
 from app.request.PenamabahanRequest import PenambahanRequest
 
 from app.request.PengambilanUangRequest import PengambilanUangRequest
+from app.request.create_order_belanja_db import CreateOrderBelanjaDBRequest
 from app.request.create_order_request import CreateOrderRequest
 from datetime import datetime 
 from fastapi.responses import JSONResponse
@@ -186,14 +188,120 @@ def create(
     return{
         "data":new_order 
     }
-
-
 def on_create_belanja_order(message: str, new_order: Bborder):
     FirebaseService.send_to_topic("order_belanja_notification", "Order Belanja Baru", message, {
         "type":"order_belanja",
         "id": str(new_order.IDOrder),
     })
+@router.post("/create/db")
+def createOrderBelanjaDB(
+    session: SessionDBKafe,
+    order: CreateOrderBelanjaDBRequest,
+    current_user: Member = Depends(get_current_user),
+):
+    if not order.items:
+        raise HTTPException(status_code=400, detail="Item tidak boleh kosong")
 
+    try:
+        date = datetime.strptime(order.tgl, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Format tgl harus YYYY-MM-DD")
+
+    new_id = get_latest_id(session) + 1
+
+    new_order = Bborder(
+        IDOrder=new_id,
+        Tgl=date,
+        Total=order.total,
+        Aktif=True,
+        Inputer=current_user.ID,
+        Category="DB",
+        Checked=True,
+        ID_Check=0,
+        Ket=order.ket,
+        PengambilanUang=0,
+        PenambahanUang=0,
+    )
+    session.add(new_order)
+
+    try:
+        for item in order.items:
+            jenis_db = session.exec(
+                select(Jnsstock).where(Jnsstock.Jenis == item.jenis_stock)
+            ).first()
+
+            if not jenis_db:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Jenis stock '{item.jenis_stock}' tidak ditemukan",
+                )
+
+            session.add(
+                Belanja(
+                    ID=new_id,
+                    Jenis=item.jenis_stock,
+                    JmlhOrder=item.qty,
+                    JmlhPenerima=0,
+                    ID_Penerima=0,
+                    Jmlh=0,
+                    ID_Belanja=0,
+                    Price=item.harga,
+                    Unit=jenis_db.Unit,
+                    Divisi=item.divisi,
+                    Checked=True,
+                    ket=item.ket,
+                    ID_UserBelanja=0,
+                )
+            )
+
+            # ── Pricelist: harga terbaru per jenis ──
+            price = session.exec(
+                select(Price).where(Price.Jenis == item.jenis_stock)
+            ).first()
+
+            changed = False
+            if price:
+                if float(price.Price or 0) != float(item.harga):
+                    price.Price = item.harga
+                    session.add(price)
+                    changed = True
+            else:
+                price = Price()
+                price.Jenis = item.jenis_stock
+                price.Price = item.harga
+                session.add(price)
+                changed = True
+
+            # ── Riwayat harga: hanya jika harga berubah / baru ──
+            if changed:
+                detail = Pricedetail()
+                detail.Tgl = date
+                detail.Jenis = item.jenis_stock
+                detail.Jmlh = item.harga
+                detail.Inputer = current_user.ID
+                session.add(detail)
+
+        session.commit()
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan order: {e}")
+
+    session.refresh(new_order)
+    return {"data": new_order}
+
+
+# Pakai query param (bukan path param) supaya tidak bentrok urutan route.
+@router.get("/price")
+def getLastPrice(
+    session: SessionDBKafe,
+    jenis: str,
+    current_user: Member = Depends(get_current_user),
+):
+    price = session.exec(select(Price).where(Price.Jenis == jenis)).first()
+    return {"jenis": jenis, "price": float(price.Price) if price and price.Price else 0}
 
 @router.put("/")
 def update_belanja(
