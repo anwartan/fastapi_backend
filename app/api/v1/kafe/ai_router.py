@@ -7,7 +7,6 @@ from typing import Literal
 from typing import Any
 from sqlalchemy import select as sqlalchemy_select, func, case, cast, Float
 import re
-import tiktoken
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select as sqlmodel_select
@@ -613,23 +612,19 @@ CONTEXT_TOKEN_BUDGET = int(os.getenv("AI_CONTEXT_TOKEN_BUDGET", "65000"))
 MAX_ROWS_PER_SECTION = int(os.getenv("AI_CONTEXT_MAX_ROWS", "250"))
 
 
-def _token_encoder():
-    model = os.getenv("OPENAI_MODEL", "gpt-6.1-sol").strip()
-    try:
-        return tiktoken.encoding_for_model(model)
-    except Exception:
-        try:
-            return tiktoken.get_encoding("o200k_base")
-        except Exception:
-            return tiktoken.get_encoding("cl100k_base")
-
-
 def _count_text_tokens(value: str) -> int:
-    try:
-        return len(_token_encoder().encode(value))
-    except Exception:
-        # Fallback konservatif bila tokenizer gagal.
-        return max(1, len(value) // 3)
+    """
+    Estimasi jumlah token tanpa library tiktoken.
+
+    Ini hanya perkiraan konservatif, bukan hitungan token resmi provider.
+    Pembagian 3 karakter dipakai agar teks Indonesia dan JSON tidak
+    terlalu diremehkan. Batas input tetap harus disetel lebih rendah
+    daripada context window model.
+    """
+    if not value:
+        return 0
+
+    return max(1, (len(value) + 2) // 3)
 
 
 def _merge_monthly_rows(rows: list[dict], section: str) -> list[dict]:
