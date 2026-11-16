@@ -269,12 +269,15 @@ def build_database_context(
     # 1. STOK SEKARANG
     # ======================================================
 
+    print("[AI DB] START stok", flush=True)
+    _q_start = time.time()
     stock_rows = session.exec(
         sqlmodel_select(Jnsstock)
         .where(Jnsstock.Aktif == True)
         .order_by(Jnsstock.Jenis)
     ).all()
 
+    print(f"[AI DB] DONE stok rows={len(stock_rows)} durasi={time.time()-_q_start:.2f}s", flush=True)
     context["data"]["stok"] = [
         {
             "jenis": row.Jenis,
@@ -325,7 +328,10 @@ def build_database_context(
         Orderstock.Jenis
     )
 
+    print("[AI DB] START order_stock", flush=True)
+    _q_start = time.time()
     stock_results = session.execute(stock_query).all()
+    print(f"[AI DB] DONE order_stock rows={len(stock_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["order_stock"] = [
         {
@@ -377,7 +383,10 @@ def build_database_context(
         func.month(Bborder.Tgl)
     )
 
+    print("[AI DB] START header_pembelian", flush=True)
+    _q_start = time.time()
     order_results = session.execute(order_query).all()
+    print(f"[AI DB] DONE header_pembelian rows={len(order_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["header_pembelian"] = [
         {
@@ -440,7 +449,10 @@ def build_database_context(
         Belanja.Jenis
     )
 
+    print("[AI DB] START detail_pembelian JOIN BBOrder-Belanja", flush=True)
+    _q_start = time.time()
     purchase_results = session.execute(purchase_query).all()
+    print(f"[AI DB] DONE detail_pembelian rows={len(purchase_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["detail_pembelian"] = [
         {
@@ -461,10 +473,13 @@ def build_database_context(
     # 5. HARGA SEKARANG
     # ======================================================
 
+    print("[AI DB] START harga_sekarang", flush=True)
+    _q_start = time.time()
     price_rows = session.exec(
         sqlmodel_select(Price).order_by(Price.Jenis)
     ).all()
 
+    print(f"[AI DB] DONE harga_sekarang rows={len(price_rows)} durasi={time.time()-_q_start:.2f}s", flush=True)
     context["data"]["harga_sekarang"] = [
         {
             "jenis": row.Jenis,
@@ -498,10 +513,13 @@ def build_database_context(
         Pricedetail.Jenis
     )
 
+    print("[AI DB] START riwayat_harga", flush=True)
+    _q_start = time.time()
     price_history_results = session.execute(
         price_history_query
     ).all()
 
+    print(f"[AI DB] DONE riwayat_harga rows={len(price_history_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
     context["data"]["riwayat_harga"] = [
         {
             "jenis": row[0],
@@ -550,7 +568,10 @@ def build_database_context(
         func.month(dailybill.Bulan)
     )
 
+    print("[AI DB] START daily_bill (database gaji)", flush=True)
+    _q_start = time.time()
     bill_results = session_login.execute(bill_query).all()
+    print(f"[AI DB] DONE daily_bill rows={len(bill_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["daily_bill"] = [
         {
@@ -841,6 +862,8 @@ def chat_with_ai(
 
         print("[AI] Membuat database context")
 
+        print("[AI] START build_database_context", flush=True)
+        _context_start = time.time()
         context = build_database_context(
             session,
             session_login,
@@ -848,6 +871,7 @@ def chat_with_ai(
             request.message
         )
 
+        print(f"[AI] DONE build_database_context durasi={time.time()-_context_start:.2f}s", flush=True)
         context = compact_database_context(context, request.message)
         context, context_tokens = fit_context_to_token_budget(context, request.message)
         context_json = json.dumps(
@@ -1001,7 +1025,10 @@ DATA DATABASE COFFEEDAY:
 
         print("[AI] Mengirim request ke OpenAI")
 
+        print("[AI] START request ke provider", flush=True)
+        _provider_start = time.time()
         reply, usage = ask_openai(messages)
+        print(f"[AI] DONE request provider durasi={time.time()-_provider_start:.2f}s", flush=True)
 
         print("[AI] OpenAI berhasil")
         print("[AI] Usage:", usage)
@@ -1091,7 +1118,8 @@ DATA DATABASE COFFEEDAY:
     except Exception as e:
         session.rollback()
 
-        print("[AI ERROR]", repr(e))
+        print("[AI ERROR]", repr(e), flush=True)
+        traceback.print_exc()
 
         raise HTTPException(
             status_code=500,
