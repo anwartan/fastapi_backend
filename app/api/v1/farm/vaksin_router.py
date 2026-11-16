@@ -18,57 +18,43 @@ def getvaksin(
     date: str,
     current_user=Depends(get_current_user_farm)
 ):
-    print("========== DEBUG VAKSIN ==========")
-    print("DATE FROM API:", date)
-
-    # STEP 1: Check vaccination data without JOINs
-    query_vaksin = select(Ayamvaksin).where(
-        Ayamvaksin.Tgl == date
-    )
-
-    result_vaksin = session.exec(query_vaksin).all()
-
-    print("VAKSIN COUNT:", len(result_vaksin))
-    print("VAKSIN DATA:", result_vaksin)
-
-    # STEP 2: Check the original query with JOINs
     vaksin_umur = (
         select(
             Ayam.Kandang,
             Ayamvaksin.Vaksin,
+            Ayamvaksin.PerVaksin,
             Ayamvaksin.Obat,
-            Ayamvaksin.KetUmum,
             Ayamvaksin.PerObat,
+            Ayamvaksin.KetUmum,
             Mskanakayam.TglMsk
         )
+        .select_from(Ayamvaksin)
         .join(
             Ayam,
-            Ayam.ID == Ayamvaksin.ID_Bsr
+            Ayam.ID == Ayamvaksin.ID_Bsr,
+            isouter=True
         )
         .join(
             Mskanakayam,
-            Mskanakayam.ID == Ayamvaksin.ID_Kcl
+            Mskanakayam.ID == Ayamvaksin.ID_Kcl,
+            isouter=True
         )
         .where(Ayamvaksin.Tgl == date)
     )
-
     result = session.exec(vaksin_umur).all()
-
-    print("JOIN RESULT COUNT:", len(result))
-    print("JOIN RESULT:", result)
-    print("==================================")
 
     return {
         "data": [
             {
                 "Kandang": row.Kandang,
                 "Vaksin": row.Vaksin,
+                "PerVaksin":row.PerVaksin,
                 "Obat": row.Obat,
-                "KetUmum": row.KetUmum,
                 "PerObat": row.PerObat,
+                "KetUmum": row.KetUmum,
                 "TglMsk": row.TglMsk
             }
             for row in result
         ]
     }
-
+    
