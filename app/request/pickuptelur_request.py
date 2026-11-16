@@ -39,11 +39,5 @@ class Pickuptelurrequest(BaseModel):
                 "tipe should be P and B"
             )
         return t
-    @field_validator("jenis_ayam")
-    def tipe_must_not_empty(cls, j):
-        if j not in ["Layer","Arab"]:
-            raise ValueError(
-                "jensi_ayam should be layer arab"
-            )
-        return j
+ 
 

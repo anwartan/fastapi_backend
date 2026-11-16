@@ -1,11 +1,11 @@
 from dataclasses import field
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, Integer
 
 class TempPickUpTelur(SQLModel, table=True):
-    __tablename__ = "TempPickUpTelur"
+    __tablename__ = "temppicktelur"
     id: int = Field(primary_key=True, default=None)
     Tgl : str 
     Dist : int 

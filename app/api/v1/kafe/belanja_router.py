@@ -201,7 +201,27 @@ def createOrderBelanjaDB(
 ):
     if not order.items:
         raise HTTPException(status_code=400, detail="Item tidak boleh kosong")
+    # Validasi item duplikat
+    seen_items = set()
 
+    for item in order.items:
+        key = (
+            item.jenis_stock,
+            float(item.harga),
+            float(item.qty),
+            (item.ket or "").strip().lower(),
+        )
+
+        if key in seen_items:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Item '{item.jenis_stock}' duplikat. "
+                    "Harga, qty, dan keterangan tidak boleh semuanya sama."
+                ),
+            )
+
+        seen_items.add(key)
     try:
         date = datetime.strptime(order.tgl, "%Y-%m-%d")
     except ValueError:
@@ -271,8 +291,6 @@ def createOrderBelanjaDB(
                 price.Price = item.harga
                 session.add(price)
                 changed = True
-
-            # ── Riwayat harga: hanya jika harga berubah / baru ──
             if changed:
                 detail = Pricedetail()
                 detail.Tgl = date
