@@ -682,7 +682,20 @@ ATURAN DATA:
 - Jangan menganggap data yang tidak tersedia sebagai nol.
 - Jangan menggandakan transaksi ketika menggabungkan tabel.
 
+ATURAN PERHITUNGAN PEMBELIAN:
 
+- BBOrder.Total merupakan sumber utama nilai pembelian.
+- Belanja.Jmlh * Belanja.Price digunakan untuk memverifikasi
+  nilai detail pembelian.
+- Cocokkan BBOrder.IDOrder dengan Belanja.ID.
+- Bandingkan total detail dengan BBOrder.Total untuk setiap IDOrder.
+- Jika cocok, gunakan satu nilai transaksi tersebut.
+- Jika tidak cocok, gunakan BBOrder.Total.
+- Jika detail tidak tersedia, gunakan BBOrder.Total.
+- Dilarang menjumlahkan BBOrder.Total dan total detail pembelian.
+- Setiap IDOrder hanya boleh dihitung satu kali.
+- Jangan menganggap total detail sebagai pengeluaran tambahan.
+- Pastikan nol nya benar misalnya jika 100 ribu 100.000.00 bukan 100.000.0000
 
 RELASI DATABASE:
 - BBOrder.IDOrder merupakan ID utama pesanan.
