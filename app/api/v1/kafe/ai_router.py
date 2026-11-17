@@ -744,6 +744,8 @@ DATA DATABASE COFFEEDAY:
         # --------------------------------------------------
 
         print("[AI] Mengirim request ke OpenAI")
+        session.commit()
+        session_login.commit()
 
         reply, usage = ask_openai(messages)
 
@@ -829,19 +831,36 @@ DATA DATABASE COFFEEDAY:
         }
 
     except HTTPException:
-        session.rollback()
+        try:
+            session.rollback()
+        except Exception as rollback_error:
+            print("[AI] Rollback Kafe error:", repr(rollback_error))
+
+        try:
+            session_login.rollback()
+        except Exception as rollback_error:
+            print("[AI] Rollback Login error:", repr(rollback_error))
+
         raise
 
     except Exception as e:
-        session.rollback()
+        try:
+            session.rollback()
+        except Exception as rollback_error:
+            print("[AI] Rollback Kafe error:", repr(rollback_error))
+
+        try:
+            session_login.rollback()
+        except Exception as rollback_error:
+            print("[AI] Rollback Login error:", repr(rollback_error))
 
         print("[AI ERROR]", repr(e))
+        traceback.print_exc()
 
         raise HTTPException(
             status_code=500,
             detail=f"Gagal memproses AI: {str(e)}"
-        )
-
+    )
 @router.get("/conversations")
 def get_ai_conversations(
     session: SessionDBKafe,
