@@ -109,101 +109,48 @@ def date_text(value):
 
 
 def get_period(message: str):
+    """Periode analisis versi lama: maksimal 180 hari (sekitar 6 bulan)."""
     today = date.today()
     text = message.lower().strip()
+    max_days = 180
 
-    # Semua riwayat
-    if any(x in text for x in [
-        "semua data",
-        "seluruh data",
-        "sepanjang waktu",
-        "semua riwayat",
-        "dari awal"
-    ]):
-        return None, None
-
-    # Periode khusus
     if "hari ini" in text:
         return today, today
-
     if "kemarin" in text:
         yesterday = today - timedelta(days=1)
         return yesterday, yesterday
-
     if "bulan ini" in text:
-        return today.replace(day=1), today
-
+        return max(today.replace(day=1), today - timedelta(days=max_days)), today
     if "bulan lalu" in text:
         first_this_month = today.replace(day=1)
         last_month = first_this_month - timedelta(days=1)
-        return last_month.replace(day=1), last_month
-
-    if "tahun ini" in text:
-        return date(today.year, 1, 1), today
-
-    if "tahun lalu" in text:
-        return (
-            date(today.year - 1, 1, 1),
-            date(today.year - 1, 12, 31)
-        )
-
+        return max(last_month.replace(day=1), today - timedelta(days=max_days)), last_month
     if "minggu ini" in text:
         start = today - timedelta(days=today.weekday())
-        return start, today
-
+        return max(start, today - timedelta(days=max_days)), today
     if "minggu lalu" in text:
         end = today - timedelta(days=today.weekday() + 1)
-        return end - timedelta(days=6), end
+        start = end - timedelta(days=6)
+        return max(start, today - timedelta(days=max_days)), end
 
-    # Tahun tertentu, misalnya 2025
-    year_match = re.search(r"\b(20\d{2})\b", text)
-
-    if year_match:
-        year = int(year_match.group(1))
-        return date(year, 1, 1), date(year, 12, 31)
-
-    # Periode beberapa tahun/bulan/hari terakhir
-    period_match = re.search(
-        r"\b(\d+)\s*(tahun|bulan|minggu|hari)\b",
-        text
-    )
-
+    # Semua permintaan periode dibatasi maksimal 180 hari.
+    period_match = re.search(r"\b(\d+)\s*(tahun|thn|th|bulan|minggu|hari)\b", text)
     if period_match:
         amount = int(period_match.group(1))
         unit = period_match.group(2)
-
-        if unit == "tahun":
-            start = today.replace(
-                year=today.year - amount,
-                day=min(
-                    today.day,
-                    calendar.monthrange(
-                        today.year - amount,
-                        today.month
-                    )[1]
-                )
-            )
-
+        if unit in ("tahun", "thn", "th"):
+            requested_days = amount * 365
         elif unit == "bulan":
-            total_month = today.year * 12 + today.month - 1 - amount
-            year = total_month // 12
-            month = total_month % 12 + 1
-            day = min(
-                today.day,
-                calendar.monthrange(year, month)[1]
-            )
-            start = date(year, month, day)
-
+            requested_days = amount * 30
         elif unit == "minggu":
-            start = today - timedelta(weeks=amount)
-
+            requested_days = amount * 7
         else:
-            start = today - timedelta(days=amount)
+            requested_days = amount
+        return today - timedelta(days=min(requested_days, max_days)), today
 
-        return start, today
+    # Jika user tidak menyebut periode, ambil 180 hari terakhir.
+    return today - timedelta(days=max_days), today
 
-    # Tidak disebutkan periode = seluruh riwayat
-    return None, None
 
 def is_admin_user(user: Member):
     division = (user.Divisi or "").strip().lower()
@@ -269,15 +216,12 @@ def build_database_context(
     # 1. STOK SEKARANG
     # ======================================================
 
-    print("[AI DB] START stok", flush=True)
-    _q_start = time.time()
     stock_rows = session.exec(
         sqlmodel_select(Jnsstock)
         .where(Jnsstock.Aktif == True)
         .order_by(Jnsstock.Jenis)
     ).all()
 
-    print(f"[AI DB] DONE stok rows={len(stock_rows)} durasi={time.time()-_q_start:.2f}s", flush=True)
     context["data"]["stok"] = [
         {
             "jenis": row.Jenis,
@@ -328,10 +272,7 @@ def build_database_context(
         Orderstock.Jenis
     )
 
-    print("[AI DB] START order_stock", flush=True)
-    _q_start = time.time()
     stock_results = session.execute(stock_query).all()
-    print(f"[AI DB] DONE order_stock rows={len(stock_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["order_stock"] = [
         {
@@ -383,10 +324,7 @@ def build_database_context(
         func.month(Bborder.Tgl)
     )
 
-    print("[AI DB] START header_pembelian", flush=True)
-    _q_start = time.time()
     order_results = session.execute(order_query).all()
-    print(f"[AI DB] DONE header_pembelian rows={len(order_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["header_pembelian"] = [
         {
@@ -449,10 +387,7 @@ def build_database_context(
         Belanja.Jenis
     )
 
-    print("[AI DB] START detail_pembelian JOIN BBOrder-Belanja", flush=True)
-    _q_start = time.time()
     purchase_results = session.execute(purchase_query).all()
-    print(f"[AI DB] DONE detail_pembelian rows={len(purchase_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["detail_pembelian"] = [
         {
@@ -473,13 +408,10 @@ def build_database_context(
     # 5. HARGA SEKARANG
     # ======================================================
 
-    print("[AI DB] START harga_sekarang", flush=True)
-    _q_start = time.time()
     price_rows = session.exec(
         sqlmodel_select(Price).order_by(Price.Jenis)
     ).all()
 
-    print(f"[AI DB] DONE harga_sekarang rows={len(price_rows)} durasi={time.time()-_q_start:.2f}s", flush=True)
     context["data"]["harga_sekarang"] = [
         {
             "jenis": row.Jenis,
@@ -513,13 +445,10 @@ def build_database_context(
         Pricedetail.Jenis
     )
 
-    print("[AI DB] START riwayat_harga", flush=True)
-    _q_start = time.time()
     price_history_results = session.execute(
         price_history_query
     ).all()
 
-    print(f"[AI DB] DONE riwayat_harga rows={len(price_history_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
     context["data"]["riwayat_harga"] = [
         {
             "jenis": row[0],
@@ -568,10 +497,7 @@ def build_database_context(
         func.month(dailybill.Bulan)
     )
 
-    print("[AI DB] START daily_bill (database gaji)", flush=True)
-    _q_start = time.time()
     bill_results = session_login.execute(bill_query).all()
-    print(f"[AI DB] DONE daily_bill rows={len(bill_results)} durasi={time.time()-_q_start:.2f}s", flush=True)
 
     context["data"]["daily_bill"] = [
         {
@@ -623,180 +549,6 @@ def build_database_context(
     }
 
     return context
-
-
-# ==========================================================
-# PEMADATAN CONTEXT AGAR INPUT TIDAK MELEBIHI LIMIT TOKEN
-# ==========================================================
-
-CONTEXT_TOKEN_BUDGET = int(os.getenv("AI_CONTEXT_TOKEN_BUDGET", "65000"))
-MAX_ROWS_PER_SECTION = int(os.getenv("AI_CONTEXT_MAX_ROWS", "250"))
-
-
-def _count_text_tokens(value: str) -> int:
-    """
-    Estimasi jumlah token tanpa library tiktoken.
-
-    Ini hanya perkiraan konservatif, bukan hitungan token resmi provider.
-    Pembagian 3 karakter dipakai agar teks Indonesia dan JSON tidak
-    terlalu diremehkan. Batas input tetap harus disetel lebih rendah
-    daripada context window model.
-    """
-    if not value:
-        return 0
-
-    return max(1, (len(value) + 2) // 3)
-
-
-def _merge_monthly_rows(rows: list[dict], section: str) -> list[dict]:
-    """Gabungkan kelompok bulanan menjadi total per item selama periode.
-
-    Semua baris sumber sudah merupakan hasil agregasi SQL; penggabungan ini
-    mempertahankan total numerik tanpa mengirim satu baris untuk setiap bulan.
-    """
-    if not rows:
-        return rows
-
-    if section == "order_stock":
-        keys = ("jenis", "divisi")
-        sum_fields = ("jumlah_transaksi", "total_order", "total_input", "total_pengiriman", "jumlah_checked")
-    elif section == "header_pembelian":
-        keys = ("kategori", "checked")
-        sum_fields = ("jumlah_order", "total_tercatat", "total_pengambilan_uang", "total_penambahan_uang")
-    elif section == "detail_pembelian":
-        keys = ("jenis", "divisi")
-        sum_fields = ("jumlah_baris_transaksi", "total_jumlah_order", "total_jumlah_penerima", "total_jumlah", "total_nilai_pembelian")
-    elif section == "daily_bill":
-        keys = ("kategori", "lunas")
-        sum_fields = ("jumlah_transaksi", "total_jumlah")
-    else:
-        return rows
-
-    merged: dict[tuple, dict] = {}
-    weighted_price: dict[tuple, float] = {}
-    weighted_count: dict[tuple, float] = {}
-
-    for row in rows:
-        key = tuple(row.get(k) for k in keys)
-        if key not in merged:
-            merged[key] = {k: row.get(k) for k in keys}
-            for field in sum_fields:
-                merged[key][field] = 0
-            if "rata_rata_harga" in row:
-                merged[key]["rata_rata_harga"] = 0
-                weighted_price[key] = 0.0
-                weighted_count[key] = 0.0
-
-        target = merged[key]
-        for field in sum_fields:
-            target[field] += safe_float(row.get(field))
-
-        if "rata_rata_harga" in row:
-            count = safe_float(row.get("jumlah_baris_transaksi"))
-            weighted_price[key] += safe_float(row.get("rata_rata_harga")) * count
-            weighted_count[key] += count
-
-    result = list(merged.values())
-    for row in result:
-        key = tuple(row.get(k) for k in keys)
-        if key in weighted_price:
-            row["rata_rata_harga"] = (
-                weighted_price[key] / weighted_count[key]
-                if weighted_count[key] else 0
-            )
-    return result
-
-
-def compact_database_context(context: dict, question: str) -> dict:
-    """Padatkan hasil agregasi, tetap menyertakan indikator data yang dipotong."""
-    data = context.get("data", {})
-    monthly_requested = any(term in question.lower() for term in (
-        "per bulan", "tiap bulan", "bulanan", "tren bulanan", "trend bulanan",
-        "perbandingan bulan", "bandingkan bulan", "monthly"
-    ))
-
-    # Pertanyaan umum tidak memerlukan satu baris untuk setiap bulan.
-    if not monthly_requested:
-        for section in ("order_stock", "header_pembelian", "detail_pembelian", "daily_bill"):
-            if isinstance(data.get(section), list):
-                data[section] = _merge_monthly_rows(data[section], section)
-
-    omitted = {}
-    for section, rows in list(data.items()):
-        if not isinstance(rows, list):
-            continue
-        original_count = len(rows)
-        # Untuk pertanyaan tren bulanan, tetap batasi jumlah titik agar prompt aman.
-        limit = MAX_ROWS_PER_SECTION if not monthly_requested else min(MAX_ROWS_PER_SECTION, 500)
-        if original_count > limit:
-            data[section] = rows[:limit]
-            omitted[section] = {
-                "kelompok_tersedia": original_count,
-                "kelompok_dikirim": limit,
-                "kelompok_tidak_dikirim": original_count - limit
-            }
-
-    context.setdefault("catatan", {})["pemadatan_context"] = {
-        "mode": "bulanan" if monthly_requested else "total_per_item_selama_periode",
-        "keterangan": (
-            "Data dikelompokkan per bulan untuk pertanyaan tren; hasil yang melebihi batas ditandai sebagai tidak lengkap."
-            if monthly_requested else
-            "Untuk menghemat token, data bulanan digabung menjadi total per jenis/kategori selama periode yang diminta."
-        ),
-        "kelompok_dibatasi": omitted,
-        "peringatan": (
-            "Jangan menyimpulkan peringkat atau total dari daftar yang dipotong sebagai keseluruhan data."
-            if omitted else "Tidak ada kelompok yang dipotong."
-        )
-    }
-    return context
-
-
-def fit_context_to_token_budget(context: dict, question: str) -> tuple[dict, int]:
-    """Batas keras tambahan agar prompt tidak mendekati limit provider."""
-    data = context.get("data", {})
-    budget = max(10000, CONTEXT_TOKEN_BUDGET)
-
-    def serialize_and_count() -> tuple[str, int]:
-        raw = json.dumps(context, ensure_ascii=False, default=str, separators=(",", ":"))
-        return raw, _count_text_tokens(raw)
-
-    raw, tokens = serialize_and_count()
-    if tokens <= budget:
-        return context, tokens
-
-    # Kurangi jumlah detail bertahap. Total data DB sudah dihitung oleh query,
-    # tetapi detail kelompok yang tidak terkirim diberi peringatan eksplisit.
-    for limit in (150, 100, 60, 30, 15):
-        for section, rows in list(data.items()):
-            if isinstance(rows, list) and len(rows) > limit:
-                data[section] = rows[:limit]
-        raw, tokens = serialize_and_count()
-        if tokens <= budget:
-            context.setdefault("catatan", {}).setdefault("pemadatan_context", {})["batas_token"] = {
-                "target_token": budget,
-                "token_context": tokens,
-                "keterangan": "Sebagian detail kelompok tidak dikirim agar permintaan tidak melewati batas token."
-            }
-            raw, tokens = serialize_and_count()
-            return context, tokens
-
-    # Jika data stok/harga/knowledge masih sangat besar, potong daftar terbesar.
-    while tokens > budget:
-        candidates = [(len(v), k) for k, v in data.items() if isinstance(v, list) and len(v) > 1]
-        if not candidates:
-            break
-        _, section = max(candidates)
-        data[section] = data[section][:max(1, len(data[section]) // 2)]
-        raw, tokens = serialize_and_count()
-
-    context.setdefault("catatan", {}).setdefault("pemadatan_context", {})["batas_token"] = {
-        "target_token": budget,
-        "token_context": tokens,
-        "keterangan": "Context dipadatkan otomatis. Periksa indikator kelompok yang tidak dikirim sebelum membuat kesimpulan rinci."
-    }
-    raw, tokens = serialize_and_count()
-    return context, tokens
 
 
 @router.post("/chat")
@@ -862,8 +614,6 @@ def chat_with_ai(
 
         print("[AI] Membuat database context")
 
-        print("[AI] START build_database_context", flush=True)
-        _context_start = time.time()
         context = build_database_context(
             session,
             session_login,
@@ -871,18 +621,17 @@ def chat_with_ai(
             request.message
         )
 
-        print(f"[AI] DONE build_database_context durasi={time.time()-_context_start:.2f}s", flush=True)
-        context = compact_database_context(context, request.message)
-        context, context_tokens = fit_context_to_token_budget(context, request.message)
         context_json = json.dumps(
             context,
             ensure_ascii=False,
-            default=str,
-            separators=(",", ":")
+            default=str
         )
 
-        print("[AI CONTEXT] Ukuran JSON:", len(context_json), "karakter")
-        print("[AI CONTEXT] Token context:", f"{context_tokens:,}")
+        print(
+            "[AI CONTEXT] Ukuran JSON:",
+            len(context_json),
+            "karakter"
+        )
 
         print(
             "[AI CONTEXT] Jumlah baris:",
@@ -901,14 +650,10 @@ def chat_with_ai(
         history = session.exec(
             sqlmodel_select(AIMessage)
             .where(
-                AIMessage.ConversationID == conversation.ID,
-                AIMessage.UserID == current_user.ID,
-                AIMessage.Role.in_(["user", "assistant"])
+                AIMessage.ConversationID == conversation.ID
             )
-            .order_by(AIMessage.CreatedAt.desc())
-            .limit(8)
+            .order_by(AIMessage.CreatedAt)
         ).all()
-        history = list(reversed(history))
 
         # --------------------------------------------------
         # 5. SYSTEM PROMPT
@@ -930,23 +675,14 @@ TUGAS:
 - Berikan kesimpulan berdasarkan hasil analisis.
 
 ATURAN DATA:
-- Gunakan seluruh ringkasan agregat yang tersedia dalam database context.
-- Jika catatan pemadatan menyatakan ada kelompok yang tidak dikirim, jangan mengklaim daftar detail sebagai keseluruhan data.
-- Untuk total keseluruhan, utamakan nilai agregat yang tersedia; jika tidak tersedia, jelaskan keterbatasannya.
+- Gunakan seluruh data yang tersedia dalam database context.
 - Jangan membatasi periode analisis secara sepihak.
 - Jika pengguna meminta satu tahun, gunakan seluruh data
   yang tersedia dalam rentang satu tahun tersebut.
 - Jangan menganggap data yang tidak tersedia sebagai nol.
 - Jangan menggandakan transaksi ketika menggabungkan tabel.
 
-ATURAN JAWABAN:
-- Jangan menampilkan SQL secara otomatis.
-- Jangan menampilkan rumus secara otomatis.
-- Jangan menampilkan proses perhitungan secara otomatis.
-- Tampilkan SQL, rumus, dan proses perhitungan hanya jika
-  pengguna secara eksplisit memintanya.
-- Perhitungan internal tetap boleh dilakukan.
-- Utamakan hasil, angka, perbandingan, dan kesimpulan.
+
 
 RELASI DATABASE:
 - BBOrder.IDOrder merupakan ID utama pesanan.
@@ -975,11 +711,11 @@ DATA DATABASE COFFEEDAY:
         # 6. TAMBAHKAN HISTORY
         # --------------------------------------------------
 
-        for item in history[-8:]:
+        for item in history[-12:]:
             if item.Role in ("user", "assistant"):
                 messages.append({
                     "role": item.Role,
-                    "content": (item.Content or "")[:2500]
+                    "content": item.Content
                 })
 
         # --------------------------------------------------
@@ -992,32 +728,16 @@ DATA DATABASE COFFEEDAY:
         })
 
         # --------------------------------------------------
-        # 8. HITUNG ESTIMASI TOKEN + BATAS PENGAMAN
+        # 8. HITUNG ESTIMASI TOKEN
         # --------------------------------------------------
 
-        total_text = "\n".join(
-            str(message.get("content", "")) for message in messages
-        )
-        estimated_tokens = _count_text_tokens(total_text)
-
-        # Sisakan ruang untuk format pesan dan variasi tokenizer provider.
-        MAX_INPUT_TOKENS = int(os.getenv("AI_MAX_INPUT_TOKENS", "80000"))
-        print("[AI CONTEXT] Estimasi seluruh token:", f"{estimated_tokens:,}")
-
-        if estimated_tokens > MAX_INPUT_TOKENS:
-            # Riwayat dihapus lebih dahulu; database context tidak diubah.
-            messages = [messages[0], messages[-1]]
-            total_text = "\n".join(str(m.get("content", "")) for m in messages)
-            estimated_tokens = _count_text_tokens(total_text)
-
-        if estimated_tokens > MAX_INPUT_TOKENS:
-            raise HTTPException(
-                status_code=413,
-                detail=(
-                    f"Konteks analisis masih terlalu besar ({estimated_tokens:,} token). "
-                    "Persempit periode atau gunakan pertanyaan yang lebih spesifik."
-                )
-            )
+        try:
+            total_text = "\n".join(message["content"] for message in messages)
+            estimated_tokens = len(total_text) // 4
+            print("[AI CONTEXT] Estimasi token kasar:", estimated_tokens)
+        except Exception as token_error:
+            print("[AI TOKEN ERROR]", repr(token_error))
+            estimated_tokens = None
 
         # --------------------------------------------------
         # 9. KIRIM KE OPENAI
@@ -1025,10 +745,7 @@ DATA DATABASE COFFEEDAY:
 
         print("[AI] Mengirim request ke OpenAI")
 
-        print("[AI] START request ke provider", flush=True)
-        _provider_start = time.time()
         reply, usage = ask_openai(messages)
-        print(f"[AI] DONE request provider durasi={time.time()-_provider_start:.2f}s", flush=True)
 
         print("[AI] OpenAI berhasil")
         print("[AI] Usage:", usage)
@@ -1118,13 +835,32 @@ DATA DATABASE COFFEEDAY:
     except Exception as e:
         session.rollback()
 
-        print("[AI ERROR]", repr(e), flush=True)
-        traceback.print_exc()
+        print("[AI ERROR]", repr(e))
 
         raise HTTPException(
             status_code=500,
             detail=f"Gagal memproses AI: {str(e)}"
         )
+
+@router.get("/conversations")
+def get_ai_conversations(
+    session: SessionDBKafe,
+    current_user: Member = Depends(get_current_user),
+):
+    conversations = session.exec(
+        sqlmodel_select(AIConversation)
+        .where(
+            AIConversation.UserID == current_user.ID
+        )
+        .order_by(
+            AIConversation.UpdatedAt.desc()
+        )
+    ).all()
+
+    return {
+        "total": len(conversations),
+        "conversations": conversations,
+    }
 
 @router.get("/conversations/{conversation_id}/messages")
 def get_conversation_messages(
@@ -1330,4 +1066,4 @@ def delete_ai_knowledge(
 
     return {
         "message": "Knowledge berhasil dihapus"
-    } 
+    }
