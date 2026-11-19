@@ -112,7 +112,7 @@ def get_period(message: str):
     """Periode analisis versi lama: maksimal 360 hari (sekitar 12 bulan)."""
     today = date.today()
     text = message.lower().strip()
-    max_days = 180
+    max_days = 360
 
     if "hari ini" in text:
         return today, today
