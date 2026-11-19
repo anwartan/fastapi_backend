@@ -108,89 +108,36 @@ def date_text(value):
 
 
 
-# def get_period(message: str):
-#     """Periode analisis versi lama: maksimal 1826 hari (sekitar 5 tahun)."""
-#     today = date.today()
-#     text = message.lower().strip()
-#     max_days = 1826
-
-#     if "hari ini" in text:
-#         return today, today
-#     if "kemarin" in text:
-#         yesterday = today - timedelta(days=1)
-#         return yesterday, yesterday
-#     if "bulan ini" in text:
-#         return max(today.replace(day=1), today - timedelta(days=max_days)), today
-#     if "bulan lalu" in text:
-#         first_this_month = today.replace(day=1)
-#         last_month = first_this_month - timedelta(days=1)
-#         return max(last_month.replace(day=1), today - timedelta(days=max_days)), last_month
-#     if "minggu ini" in text:
-#         start = today - timedelta(days=today.weekday())
-#         return max(start, today - timedelta(days=max_days)), today
-#     if "minggu lalu" in text:
-#         end = today - timedelta(days=today.weekday() + 1)
-#         start = end - timedelta(days=6)
-#         return max(start, today - timedelta(days=max_days)), end
-
-#     # Semua permintaan periode dibatasi maksimal 180 hari.
-#     period_match = re.search(r"\b(\d+)\s*(tahun|thn|th|bulan|minggu|hari)\b", text)
-#     if period_match:
-#         amount = int(period_match.group(1))
-#         unit = period_match.group(2)
-#         if unit in ("tahun", "thn", "th"):
-#             requested_days = amount * 365
-#         elif unit == "bulan":
-#             requested_days = amount * 30
-#         elif unit == "minggu":
-#             requested_days = amount * 7
-#         else:
-#             requested_days = amount
-#         return today - timedelta(days=min(requested_days, max_days)), today
-
-#     # Jika user tidak menyebut periode, ambil 180 hari terakhir.
-#     return today - timedelta(days=max_days), today
-
-
 def get_period(message: str):
-    """Menentukan periode analisis tanpa batas maksimal tahun."""
+    """Periode analisis versi lama: maksimal 360 hari (sekitar 12 bulan)."""
     today = date.today()
     text = message.lower().strip()
+    max_days = 180
 
     if "hari ini" in text:
         return today, today
-
     if "kemarin" in text:
         yesterday = today - timedelta(days=1)
         return yesterday, yesterday
-
     if "bulan ini" in text:
-        return today.replace(day=1), today
-
+        return max(today.replace(day=1), today - timedelta(days=max_days)), today
     if "bulan lalu" in text:
         first_this_month = today.replace(day=1)
         last_month = first_this_month - timedelta(days=1)
-        return last_month.replace(day=1), last_month
-
+        return max(last_month.replace(day=1), today - timedelta(days=max_days)), last_month
     if "minggu ini" in text:
         start = today - timedelta(days=today.weekday())
-        return start, today
-
+        return max(start, today - timedelta(days=max_days)), today
     if "minggu lalu" in text:
         end = today - timedelta(days=today.weekday() + 1)
         start = end - timedelta(days=6)
-        return start, end
+        return max(start, today - timedelta(days=max_days)), end
 
-    # Deteksi periode berdasarkan jumlah tahun, bulan, minggu, atau hari.
-    period_match = re.search(
-        r"\b(\d+)\s*(tahun|thn|th|bulan|minggu|hari)\b",
-        text
-    )
-
+    # Semua permintaan periode dibatasi maksimal 180 hari.
+    period_match = re.search(r"\b(\d+)\s*(tahun|thn|th|bulan|minggu|hari)\b", text)
     if period_match:
         amount = int(period_match.group(1))
         unit = period_match.group(2)
-
         if unit in ("tahun", "thn", "th"):
             requested_days = amount * 365
         elif unit == "bulan":
@@ -199,11 +146,11 @@ def get_period(message: str):
             requested_days = amount * 7
         else:
             requested_days = amount
+        return today - timedelta(days=min(requested_days, max_days)), today
 
-        return today - timedelta(days=requested_days), today
+    # Jika user tidak menyebut periode, ambil 180 hari terakhir.
+    return today - timedelta(days=max_days), today
 
-    # Jika tidak menyebut periode, ambil seluruh data sejak awal.
-    return date(2000, 1, 1), today
 
 def is_admin_user(user: Member):
     division = (user.Divisi or "").strip().lower()
