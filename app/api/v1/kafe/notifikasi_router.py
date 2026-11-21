@@ -83,6 +83,10 @@ def _date_to_string(value):
     return str(value)
 
 
+def _is_checked(header):
+    return bool(getattr(header, "Checked", False))
+
+
 # ============================================================
 # NOTIFIKASI PENERIMAAN
 # ============================================================
@@ -122,6 +126,10 @@ def get_notifikasi_penerimaan(
 
     for item, header in belanja_rows:
 
+        # Jika header sudah checked, jangan tampilkan
+        if _is_checked(header):
+            continue
+
         order_id = header.IDOrder
         key = ("order_belanja", order_id)
 
@@ -130,7 +138,7 @@ def get_notifikasi_penerimaan(
                 "type": "order_belanja",
                 "IDOrder": order_id,
                 "Tgl": _date_to_string(header.Tgl),
-                "divisi": item.Divisi,
+                "Divisi": item.Divisi,
                 "Ket": header.Ket,
                 "PendingItems": 0,
                 "TotalItems": 0,
@@ -139,9 +147,10 @@ def get_notifikasi_penerimaan(
 
         grouped[key]["TotalItems"] += 1
 
+        # Satu kolom penerimaan terisi saja sudah dianggap diterima
         sudah_diterima = (
             not _is_zero_or_none(item.JmlhPenerima)
-            and not _is_zero_or_none(item.ID_Penerima)
+            or not _is_zero_or_none(item.ID_Penerima)
         )
 
         if sudah_diterima:
@@ -170,6 +179,10 @@ def get_notifikasi_penerimaan(
 
     for item, header in stock_rows:
 
+        # Jika header sudah checked, jangan tampilkan
+        if _is_checked(header):
+            continue
+
         order_id = header.IDOrder
         key = ("order_stock", order_id)
 
@@ -178,7 +191,7 @@ def get_notifikasi_penerimaan(
                 "type": "order_stock",
                 "IDOrder": order_id,
                 "Tgl": _date_to_string(header.Tgl),
-                "divisi": item.Divisi,
+                "Divisi": item.Divisi,
                 "Ket": header.Ket,
                 "PendingItems": 0,
                 "TotalItems": 0,
@@ -187,9 +200,10 @@ def get_notifikasi_penerimaan(
 
         grouped[key]["TotalItems"] += 1
 
+        # Satu kolom penerimaan terisi saja sudah dianggap diterima
         sudah_diterima = (
             not _is_zero_or_none(item.JmlhInp)
-            and not _is_zero_or_none(item.ID_Penerimaan)
+            or not _is_zero_or_none(item.ID_Penerimaan)
         )
 
         if sudah_diterima:
@@ -198,7 +212,7 @@ def get_notifikasi_penerimaan(
             grouped[key]["PendingItems"] += 1
 
     # ========================================================
-    # TAMPILKAN ORDER YANG BELUM ADA PENERIMAAN SAMA SEKALI
+    # HASIL AKHIR
     # ========================================================
 
     result = [
